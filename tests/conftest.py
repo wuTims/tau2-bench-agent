@@ -1,4 +1,5 @@
-from typing import Callable
+from collections.abc import Callable
+import os
 
 import pytest
 
@@ -53,3 +54,48 @@ def task_with_history_and_env_assertions() -> Task:
 @pytest.fixture
 def task_with_action_checks() -> Task:
     return get_tasks("mock", task_ids=["impossible_task_1"])[0]
+
+
+# LLM Configuration for Real Integration Tests
+# These fixtures provide default configurations for tests that make actual LLM calls
+
+@pytest.fixture
+def nebius_llm_config():
+    """Nebius Llama configuration for testing (requires NEBIUS_API_KEY and NEBIUS_API_BASE env vars)"""
+    api_key = os.getenv("NEBIUS_API_KEY")
+    api_base = os.getenv("NEBIUS_API_BASE", "https://api.tokenfactory.nebius.com/v1/")
+
+    if not api_key:
+        pytest.skip("NEBIUS_API_KEY not set - skipping test requiring real LLM calls")
+
+    return {
+        "model": "openai/meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "api_key": api_key,
+        "api_base": api_base,
+    }
+
+
+@pytest.fixture
+def test_llm_agent_config(nebius_llm_config):
+    """Default LLM agent configuration for tests"""
+    return {
+        "llm": nebius_llm_config["model"],
+        "llm_args": {
+            "api_key": nebius_llm_config["api_key"],
+            "api_base": nebius_llm_config["api_base"],
+            "temperature": 0.0,
+        }
+    }
+
+
+@pytest.fixture
+def test_user_llm_config(nebius_llm_config):
+    """Default user simulator LLM configuration for tests"""
+    return {
+        "llm": nebius_llm_config["model"],
+        "llm_args": {
+            "api_key": nebius_llm_config["api_key"],
+            "api_base": nebius_llm_config["api_base"],
+            "temperature": 0.0,
+        }
+    }

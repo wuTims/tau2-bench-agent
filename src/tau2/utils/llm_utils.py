@@ -81,8 +81,7 @@ def _parse_ft_model_name(model: str) -> str:
     match = re.match(pattern, model)
     if match:
         return match.group("model")
-    else:
-        return model
+    return model
 
 
 def get_response_cost(response: ModelResponse) -> float:
@@ -100,8 +99,8 @@ def get_response_cost(response: ModelResponse) -> float:
     return cost
 
 
-def get_response_usage(response: ModelResponse) -> Optional[dict]:
-    usage: Optional[Usage] = response.get("usage")
+def get_response_usage(response: ModelResponse) -> dict | None:
+    usage: Usage | None = response.get("usage")
     if usage is None:
         return None
     return {
@@ -180,8 +179,8 @@ def to_litellm_messages(messages: list[Message]) -> list[dict]:
 def generate(
     model: str,
     messages: list[Message],
-    tools: Optional[list[Tool]] = None,
-    tool_choice: Optional[str] = None,
+    tools: list[Tool] | None = None,
+    tool_choice: str | None = None,
     **kwargs: Any,
 ) -> UserMessage | AssistantMessage:
     """

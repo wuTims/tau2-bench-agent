@@ -22,7 +22,7 @@ def get_pydantic_hash(obj: BaseModel) -> str:
 
 
 def update_pydantic_model_with_dict(
-    model_instance: T, update_data: Dict[str, Any]
+    model_instance: T, update_data: dict[str, Any]
 ) -> T:
     """
     Return an updated BaseModel instance based on the update_data.

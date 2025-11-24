@@ -64,19 +64,19 @@ def load_file(path: str | Path, **kwargs: Any) -> dict[str, Any]:
     """
     path = Path(path)
     if path.suffix == ".json":
-        with open(path, "r") as fp:
+        with open(path) as fp:
             data = json.load(fp, **kwargs)
     elif path.suffix == ".yaml" or path.suffix == ".yml":
-        with open(path, "r") as fp:
+        with open(path) as fp:
             data = yaml.load(fp, Loader=yaml.SafeLoader, **kwargs)
     elif path.suffix == ".toml":
-        with open(path, "r") as fp:
+        with open(path) as fp:
             data = toml.load(fp, **kwargs)
     elif path.suffix == ".txt" or path.suffix == ".md":
         encoding = kwargs.pop("encoding", None)
         if len(kwargs) > 0:
             raise ValueError(f"Unsupported keyword arguments: {kwargs}")
-        with open(path, "r", encoding=encoding) as fp:
+        with open(path, encoding=encoding) as fp:
             data = fp.read()
     else:
         raise ValueError(f"Unsupported file extension: {path}")

@@ -15,7 +15,7 @@ from tau2.utils import load_file
 
 
 def get_environment(
-    db: Optional[FlightDB] = None,
+    db: FlightDB | None = None,
     solo_mode: bool = False,
 ) -> Environment:
     if solo_mode:
@@ -23,7 +23,7 @@ def get_environment(
     if db is None:
         db = FlightDB.load(AIRLINE_DB_PATH)
     tools = AirlineTools(db)
-    with open(AIRLINE_POLICY_PATH, "r") as fp:
+    with open(AIRLINE_POLICY_PATH) as fp:
         policy = fp.read()
     return Environment(
         domain_name="airline",
@@ -32,7 +32,7 @@ def get_environment(
     )
 
 
-def get_tasks(task_split_name: Optional[str] = "base") -> list[Task]:
+def get_tasks(task_split_name: str | None = "base") -> list[Task]:
     tasks = load_file(AIRLINE_TASK_SET_PATH)
     tasks = [Task.model_validate(task) for task in tasks]
     if task_split_name is None:

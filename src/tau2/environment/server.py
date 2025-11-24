@@ -1,9 +1,8 @@
 import json
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import create_model
-from typing_extensions import Annotated
 
 from tau2.environment.environment import Environment
 from tau2.environment.toolkit import get_tool_signatures
@@ -173,7 +172,7 @@ All successful responses will return the tool's output directly. Errors will ret
                     raise HTTPException(status_code=400, detail=str(e))
 
     def _format_tool_description(
-        self, doc: str, returns: Optional[dict] = None, is_user_tool: bool = False
+        self, doc: str, returns: dict | None = None, is_user_tool: bool = False
     ) -> str:
         """Format tool documentation for better ReDoc rendering"""
         import re

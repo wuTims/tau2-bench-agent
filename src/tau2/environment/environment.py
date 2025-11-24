@@ -26,7 +26,7 @@ class EnvironmentInfo(BaseModel):
 
     domain_name: str = Field(description="The name of the domain.")
     policy: str = Field(description="The policy of the agent.")
-    tool_defs: Optional[dict[str, ToolSignature]] = Field(
+    tool_defs: dict[str, ToolSignature] | None = Field(
         description="The tool definitions of the environment.", default=None
     )
 
@@ -40,8 +40,8 @@ class Environment:
         self,
         domain_name: str,
         policy: str,
-        tools: Optional[ToolKitBase] = None,
-        user_tools: Optional[ToolKitBase] = None,
+        tools: ToolKitBase | None = None,
+        user_tools: ToolKitBase | None = None,
         solo_mode: bool = False,
     ):
         """
@@ -92,7 +92,7 @@ class Environment:
 
     def get_tools_description(
         self, env_type: Literal["user", "assistant"]
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Return a description of the user tools.
         """
@@ -146,20 +146,18 @@ class Environment:
             if self.solo_mode:
                 raise ValueError("User tool calls are not allowed in solo mode")
             return self.use_user_tool(tool_name=tool_name, **kwargs)
-        elif requestor == "assistant":
+        if requestor == "assistant":
             if self.solo_mode and self.user_tools is not None:
                 if self.user_tools.has_tool(tool_name):
                     return self.use_user_tool(tool_name=tool_name, **kwargs)
             return self.use_tool(tool_name=tool_name, **kwargs)
-        else:
-            raise ValueError(f"Invalid requestor: {requestor}")
+        raise ValueError(f"Invalid requestor: {requestor}")
 
     def sync_tools(self):
         """
         Sync the user and assistant tools.
         Subclass should override this method if tools need to be synced.
         """
-        pass
 
     def run_env_function_call(self, env_function_call: EnvFunctionCall) -> Any:
         """
@@ -242,7 +240,7 @@ class Environment:
         """
         return self.get_user_db_hash() == reference.get_hash()
 
-    def get_db_hash(self) -> Optional[str]:
+    def get_db_hash(self) -> str | None:
         """
         Get a hash of the agent database
         Returns None if the database is not available
@@ -251,7 +249,7 @@ class Environment:
             return None
         return self.tools.get_db_hash()
 
-    def get_user_db_hash(self) -> Optional[str]:
+    def get_user_db_hash(self) -> str | None:
         """
         Get a hash of the user database
         Returns None if the database is not available
@@ -262,8 +260,8 @@ class Environment:
 
     def set_state(
         self,
-        initialization_data: Optional[InitializationData],
-        initialization_actions: Optional[list[EnvFunctionCall]],
+        initialization_data: InitializationData | None,
+        initialization_actions: list[EnvFunctionCall] | None,
         message_history: list[Message],
     ):
         """
@@ -343,23 +341,20 @@ class Environment:
         def _process(resp: Any) -> str:
             if isinstance(resp, BaseModel):
                 return resp.model_dump()
-            elif isinstance(resp, str):
+            if isinstance(resp, str) or resp is None:
                 return resp
-            elif resp is None:
-                return resp
-            elif isinstance(resp, (int, float, bool)):
+            if isinstance(resp, (int, float, bool)):
                 return str(resp)
-            elif isinstance(resp, list):
+            if isinstance(resp, list):
                 return [_process(item) for item in resp]
-            elif isinstance(resp, tuple):
+            if isinstance(resp, tuple):
                 return tuple(_process(item) for item in resp)
-            elif isinstance(resp, dict):
+            if isinstance(resp, dict):
                 return {k: _process(v) for k, v in resp.items()}
-            elif isinstance(resp, (datetime, date)):
+            if isinstance(resp, (datetime, date)):
                 # TODO: this did not fix the error: Object of type date is not JSON serializable
                 return resp.isoformat()
-            else:
-                raise ValueError(f"Unsupported type: {type(resp)}")
+            raise ValueError(f"Unsupported type: {type(resp)}")
 
         if not isinstance(resp, str):
             return json.dumps(_process(resp), default=str)  # FIXME: add default=str

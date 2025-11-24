@@ -15,26 +15,26 @@ class ContactInfo(BaseModelNoExtra):
     email: str = Field(
         ..., description="Contact email for questions about this submission"
     )
-    name: Optional[str] = Field(None, description="Name of the submitter")
-    github: Optional[str] = Field(None, description="GitHub username (optional)")
+    name: str | None = Field(None, description="Name of the submitter")
+    github: str | None = Field(None, description="GitHub username (optional)")
 
 
 class DomainResults(BaseModelNoExtra):
     """Results for a specific domain."""
 
-    pass_1: Optional[float] = Field(
+    pass_1: float | None = Field(
         None, ge=0, le=100, description="Pass^1 success rate percentage"
     )
-    pass_2: Optional[float] = Field(
+    pass_2: float | None = Field(
         None, ge=0, le=100, description="Pass^2 success rate percentage"
     )
-    pass_3: Optional[float] = Field(
+    pass_3: float | None = Field(
         None, ge=0, le=100, description="Pass^3 success rate percentage"
     )
-    pass_4: Optional[float] = Field(
+    pass_4: float | None = Field(
         None, ge=0, le=100, description="Pass^4 success rate percentage"
     )
-    cost: Optional[float] = Field(
+    cost: float | None = Field(
         None,
         ge=0,
         description="Average cost in USD to run one trajectory in this domain (optional)",
@@ -44,36 +44,35 @@ class DomainResults(BaseModelNoExtra):
 class Results(BaseModelNoExtra):
     """Performance results for each domain."""
 
-    retail: Optional[DomainResults] = None
-    airline: Optional[DomainResults] = None
-    telecom: Optional[DomainResults] = None
+    retail: DomainResults | None = None
+    airline: DomainResults | None = None
+    telecom: DomainResults | None = None
 
     def get_domain_results(self, domain: str) -> DomainResults:
         """Get the domain results for a given domain."""
         if domain == "retail":
             return self.retail
-        elif domain == "airline":
+        if domain == "airline":
             return self.airline
-        elif domain == "telecom":
+        if domain == "telecom":
             return self.telecom
-        else:
-            raise ValueError(f"Invalid domain: {domain}")
+        raise ValueError(f"Invalid domain: {domain}")
 
 
 class Methodology(BaseModelNoExtra):
     """Information about how the evaluation was conducted."""
 
-    evaluation_date: Optional[date] = Field(
+    evaluation_date: date | None = Field(
         None, description="Date when evaluation was conducted"
     )
-    tau2_bench_version: Optional[str] = Field(
+    tau2_bench_version: str | None = Field(
         None, description="Version of tau2-bench used for evaluation"
     )
-    user_simulator: Optional[str] = Field(
+    user_simulator: str | None = Field(
         None,
         description="Model used for user simulation during evaluation, or null if unknown",
     )
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         None, description="Additional notes about the evaluation methodology"
     )
 
@@ -92,7 +91,7 @@ class Submission(BaseModelNoExtra):
         False,
         description="Whether this model should be highlighted as new on the leaderboard",
     )
-    methodology: Optional[Methodology] = Field(
+    methodology: Methodology | None = Field(
         None, description="Information about how the evaluation was conducted"
     )
 

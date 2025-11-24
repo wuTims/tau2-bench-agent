@@ -46,10 +46,10 @@ def get_global_user_sim_guidelines(use_tools: bool = False) -> str:
         The global user simulator guidelines.
     """
     if use_tools:
-        with open(GLOBAL_USER_SIM_GUIDELINES_PATH_TOOLS, "r") as fp:
+        with open(GLOBAL_USER_SIM_GUIDELINES_PATH_TOOLS) as fp:
             user_sim_guidelines = fp.read()
     else:
-        with open(GLOBAL_USER_SIM_GUIDELINES_PATH, "r") as fp:
+        with open(GLOBAL_USER_SIM_GUIDELINES_PATH) as fp:
             user_sim_guidelines = fp.read()
     return user_sim_guidelines
 
@@ -68,10 +68,10 @@ class UserSimulator(BaseUser):
 
     def __init__(
         self,
-        tools: Optional[list[Tool]] = None,
-        instructions: Optional[UserInstructions] = None,
-        llm: Optional[str] = None,
-        llm_args: Optional[dict] = None,
+        tools: list[Tool] | None = None,
+        instructions: UserInstructions | None = None,
+        llm: str | None = None,
+        llm_args: dict | None = None,
     ):
         super().__init__(instructions=instructions, llm=llm, llm_args=llm_args)
         self.tools = tools
@@ -99,7 +99,7 @@ class UserSimulator(BaseUser):
         return system_prompt
 
     def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> UserState:
         """
         Get the initial state of the user simulator.
@@ -132,12 +132,12 @@ class UserSimulator(BaseUser):
 
     def generate_next_message(
         self, message: ValidUserInputMessage, state: UserState
-    ) -> Tuple[UserMessage, UserState]:
+    ) -> tuple[UserMessage, UserState]:
         return self._generate_next_message(message, state)
 
     def _generate_next_message(
         self, message: ValidUserInputMessage, state: UserState
-    ) -> Tuple[UserMessage, UserState]:
+    ) -> tuple[UserMessage, UserState]:
         """Get the response from the user simulator.
 
         Args:
@@ -195,7 +195,7 @@ class DummyUser(UserSimulator):
     """A dummy user to run a agent solo simulation."""
 
     def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> UserState:
         return UserState(messages=[], system_messages=[])
 

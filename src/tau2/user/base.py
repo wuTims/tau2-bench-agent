@@ -23,7 +23,6 @@ class UserError(Exception):
     Generic exception for user errors.
     """
 
-    pass
 
 
 def is_valid_user_history_message(message: Message) -> bool:
@@ -99,9 +98,9 @@ class BaseUser(ABC):
 
     def __init__(
         self,
-        instructions: Optional[str] = None,
-        llm: Optional[str] = None,
-        llm_args: Optional[dict] = None,
+        instructions: str | None = None,
+        llm: str | None = None,
+        llm_args: dict | None = None,
     ):
         self.llm = llm
         self.llm_args = deepcopy(llm_args) if llm_args is not None else {}
@@ -109,7 +108,7 @@ class BaseUser(ABC):
 
     @abstractmethod
     async def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> UserState:
         """Get the initial state of the user simulator.
 
@@ -119,7 +118,6 @@ class BaseUser(ABC):
         Returns:
             The initial state of the user simulator.
         """
-        pass
 
     @abstractmethod
     async def generate_next_message(
@@ -134,7 +132,6 @@ class BaseUser(ABC):
         Returns:
             A tuple containing the user message and the new state of the user simulator.
         """
-        pass
 
     @classmethod
     @abstractmethod
@@ -147,7 +144,6 @@ class BaseUser(ABC):
         Returns:
             True if the user message is a stop message, False otherwise.
         """
-        pass
 
     def set_seed(self, seed: int):
         if self.llm is None:
@@ -158,9 +154,8 @@ class BaseUser(ABC):
         self.llm_args["seed"] = seed
 
     def stop(
-        self, message: Optional[UserMessage] = None, state: Optional[UserState] = None
+        self, message: UserMessage | None = None, state: UserState | None = None
     ) -> None:
         """
         Stops the user simulator.
         """
-        pass

@@ -23,4 +23,3 @@ class EvaluatorBase(ABC):
         """
         Calculate the reward for the simulation.
         """
-        pass

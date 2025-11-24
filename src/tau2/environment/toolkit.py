@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from enum import Enum
-from typing import Annotated, Any, Callable, Dict, Optional, TypeVar
+from typing import Annotated, Any, Dict, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -26,7 +27,7 @@ class ToolKitType(type):
                 func_tools[name] = method
 
         @property
-        def _func_tools(self) -> Dict[str, Callable]:
+        def _func_tools(self) -> dict[str, Callable]:
             """Get the tools available in the ToolKit."""
             all_func_tools = func_tools.copy()
             try:
@@ -65,11 +66,11 @@ def is_tool(tool_type: ToolType = ToolType.READ):
 class ToolKitBase(metaclass=ToolKitType):
     """Base class for ToolKit classes."""
 
-    def __init__(self, db: Optional[T] = None):
-        self.db: Optional[T] = db
+    def __init__(self, db: T | None = None):
+        self.db: T | None = db
 
     @property
-    def tools(self) -> Dict[str, Callable]:
+    def tools(self) -> dict[str, Callable]:
         """Get the tools available in the ToolKit."""
         return {name: getattr(self, name) for name in self._func_tools.keys()}
 
@@ -79,7 +80,7 @@ class ToolKitBase(metaclass=ToolKitType):
             raise ValueError(f"Tool '{tool_name}' not found.")
         return self.tools[tool_name](**kwargs)
 
-    def get_tools(self) -> Dict[str, Tool]:
+    def get_tools(self) -> dict[str, Tool]:
         """Get the tools available in the ToolKit.
         Uses the `as_tool` to convert the functions to Tool objects.
 
@@ -122,7 +123,7 @@ class ToolKitBase(metaclass=ToolKitType):
             "num_generic_tools": num_generic_tools,
         }
 
-    def update_db(self, update_data: Optional[dict[str, Any]] = None):
+    def update_db(self, update_data: dict[str, Any] | None = None):
         """Update the database of the ToolKit."""
         if update_data is None:
             update_data = {}
@@ -141,11 +142,11 @@ class ToolSignature(BaseModel):
     name: Annotated[str, Field(description="The name of the tool")]
     doc: Annotated[str, Field(description="The documentation of the tool")]
     params: Annotated[
-        Optional[dict],
+        dict | None,
         Field(description="JSON schema of the parameters of the tool", default=None),
     ]
     returns: Annotated[
-        Optional[dict],
+        dict | None,
         Field(description="JSON schema of the return of the tool", default=None),
     ]
 

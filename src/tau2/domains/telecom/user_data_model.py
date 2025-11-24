@@ -72,19 +72,19 @@ class APNSettings(BaseModelNoExtra):
         False,
         description="Whether the APN settings will be reset at the next reboot.",
     )
-    mms_apn: Optional[str] = Field(
+    mms_apn: str | None = Field(
         "mms",
         description="Specific APN name used for MMS traffic, if different from general data.",
     )
-    mmsc_url: Optional[str] = Field(
+    mmsc_url: str | None = Field(
         "http://mms.carrier.com/mms/wapenc",
         description="The URL of the Multimedia Messaging Service Center (MMSC). Crucial for MMS.",
     )
-    mms_proxy: Optional[str] = Field(
+    mms_proxy: str | None = Field(
         None,
         description="The proxy server address required for MMS traffic on some networks.",
     )
-    mms_port: Optional[int] = Field(
+    mms_port: int | None = Field(
         None,
         description="The proxy server port required for MMS traffic on some networks.",
     )
@@ -99,10 +99,10 @@ class APNSettings(BaseModelNoExtra):
 class VpnDetails(BaseModelNoExtra):
     """Holds details about the VPN connection if active."""
 
-    server_address: Optional[str] = Field(
+    server_address: str | None = Field(
         None, description="Address of the connected VPN server."
     )
-    protocol: Optional[str] = Field(
+    protocol: str | None = Field(
         None, description="VPN protocol being used (e.g., WireGuard, OpenVPN)."
     )
     server_performance: PerformanceLevel = Field(
@@ -230,7 +230,7 @@ class MockPhoneAttributes(BaseModelNoExtra):
         False,
         description="Whether the device is currently connected to a Wi-Fi network.",
     )
-    wifi_ssid: Optional[str] = Field(
+    wifi_ssid: str | None = Field(
         None, description="The name (SSID) of the connected Wi-Fi network, if any."
     )
     wifi_signal_strength: SignalStrength = Field(
@@ -262,13 +262,13 @@ class MockPhoneAttributes(BaseModelNoExtra):
     vpn_connected: bool = Field(
         False, description="Whether there currently is an active VPN connection tunnel."
     )
-    vpn_details: Optional[VpnDetails] = Field(
+    vpn_details: VpnDetails | None = Field(
         None, description="Details about the active VPN connection, if connected."
     )
 
     # --- Application State ---
     # Storing a list/dict allows mocking status for multiple relevant apps
-    app_statuses: Dict[str, AppStatus] = Field(
+    app_statuses: dict[str, AppStatus] = Field(
         default_factory=lambda: {
             "messaging": AppStatus(
                 app_name="messaging",
@@ -284,7 +284,7 @@ class MockPhoneAttributes(BaseModelNoExtra):
 
 
 def get_device(
-    initial_state: Optional[Union[MockPhoneAttributes, Dict[str, Any]]] = None,
+    initial_state: MockPhoneAttributes | dict[str, Any] | None = None,
 ):
     """
     Initializes the action handler with a device state.
@@ -320,8 +320,8 @@ class PaymentRequest(BaseModelNoExtra):
 class UserSurroundings(BaseModelNoExtra):
     """Represents the physical surroundings of the user."""
 
-    name: Optional[str] = Field(None, description="The name of the user.")
-    phone_number: Optional[str] = Field(
+    name: str | None = Field(None, description="The name of the user.")
+    phone_number: str | None = Field(
         None, description="The phone number of the user."
     )
     is_abroad: bool = Field(False, description="Whether the user is currently abroad.")
@@ -341,7 +341,7 @@ class UserSurroundings(BaseModelNoExtra):
         False, description="Whether the user has exceeded their data usage limit."
     )
     line_active: bool = Field(True, description="Whether the user has an active line.")
-    payment_request: Optional[PaymentRequest] = Field(
+    payment_request: PaymentRequest | None = Field(
         None, description="The payment that the agent has requested."
     )
 
@@ -356,7 +356,7 @@ class TelecomUserDB(DB):
         default_factory=UserSurroundings, description="User's physical surroundings"
     )
 
-    def update_device(self, update_data: Dict[str, Any]) -> None:
+    def update_device(self, update_data: dict[str, Any]) -> None:
         """Update the mock device state."""
         self.device = update_pydantic_model_with_dict(self.device, update_data)
 
