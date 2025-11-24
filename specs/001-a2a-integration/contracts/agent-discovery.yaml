@@ -1,0 +1,312 @@
+openapi: 3.0.3
+info:
+  title: A2A Agent Discovery API
+  version: 1.0.0
+  description: |
+    Agent discovery endpoint following RFC 8615 well-known URI pattern.
+    A2A agents expose capabilities and metadata via the agent card endpoint.
+
+    **Endpoint**: /.well-known/agent-card.json
+    **Method**: HTTP GET
+    **Content-Type**: application/json
+    **Authentication**: Typically unauthenticated (per spec), but may require auth
+
+servers:
+  - url: https://agent.example.com
+    description: Example A2A agent endpoint
+
+paths:
+  /.well-known/agent-card.json:
+    get:
+      summary: Discover agent capabilities
+      description: |
+        Retrieve agent metadata, capabilities, and authentication requirements.
+        This endpoint follows RFC 8615 well-known URI convention.
+      operationId: getAgentCard
+      tags:
+        - discovery
+      responses:
+        '200':
+          description: Agent card retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCard'
+              examples:
+                basicAgent:
+                  summary: Basic agent with no auth
+                  value:
+                    name: "Customer Service Agent"
+                    description: "AI agent for airline customer service"
+                    url: "https://agent.example.com"
+                    version: "1.0.0"
+                    defaultInputModes: ["text/plain"]
+                    defaultOutputModes: ["text/plain", "application/json"]
+                    capabilities:
+                      streaming: false
+                      pushNotifications: false
+                    skills:
+                      - id: "flight_booking"
+                        name: "Flight Booking"
+                        description: "Search and book flights"
+                        tags: ["booking", "flights"]
+                      - id: "reservation_management"
+                        name: "Reservation Management"
+                        description: "View and modify reservations"
+                        tags: ["reservations"]
+
+                authenticatedAgent:
+                  summary: Agent requiring bearer token auth
+                  value:
+                    name: "Secure Customer Service Agent"
+                    description: "AI agent with authentication"
+                    url: "https://secure-agent.example.com"
+                    version: "2.0.0"
+                    capabilities:
+                      streaming: true
+                      pushNotifications: false
+                    securitySchemes:
+                      bearerAuth:
+                        type: "http"
+                        scheme: "bearer"
+                        bearerFormat: "JWT"
+                    security:
+                      - bearerAuth: []
+
+        '404':
+          description: Agent card not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Not Found"
+                message: "Agent card not available at this endpoint"
+
+        '401':
+          description: Authentication required (non-standard, but handle gracefully)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                message: "Bearer token required for agent card access"
+
+components:
+  schemas:
+    AgentCard:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+          description: Agent display name
+          minLength: 1
+          example: "Customer Service Agent"
+
+        description:
+          type: string
+          description: Agent description
+          example: "AI agent for airline customer service tasks"
+
+        url:
+          type: string
+          format: uri
+          description: Agent base URL
+          example: "https://agent.example.com"
+
+        version:
+          type: string
+          description: Agent version string (semantic versioning)
+          pattern: '^\d+\.\d+\.\d+$'
+          example: "1.0.0"
+
+        defaultInputModes:
+          type: array
+          items:
+            type: string
+          description: Default input content types
+          default: ["text/plain"]
+          example: ["text/plain"]
+
+        defaultOutputModes:
+          type: array
+          items:
+            type: string
+          description: Default output content types
+          default: ["text/plain"]
+          example: ["text/plain", "application/json"]
+
+        capabilities:
+          $ref: '#/components/schemas/AgentCapabilities'
+
+        securitySchemes:
+          type: object
+          description: Authentication schemes (OpenAPI 3.2 format)
+          additionalProperties:
+            $ref: '#/components/schemas/SecurityScheme'
+          example:
+            bearerAuth:
+              type: "http"
+              scheme: "bearer"
+              bearerFormat: "JWT"
+
+        security:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+          description: Required security schemes
+          example:
+            - bearerAuth: []
+
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentSkill'
+          description: Agent skills metadata (informational)
+
+        supportsAuthenticatedExtendedCard:
+          type: boolean
+          description: Whether agent supports extended card with auth
+          default: false
+
+    AgentCapabilities:
+      type: object
+      description: Agent capability flags
+      properties:
+        streaming:
+          type: boolean
+          description: Supports streaming responses
+          default: false
+
+        pushNotifications:
+          type: boolean
+          description: Supports push notifications
+          default: false
+
+        contextPersistence:
+          type: boolean
+          description: Supports context persistence across sessions
+          default: false
+
+        multiModal:
+          type: boolean
+          description: Supports multi-modal content (text, images, files)
+          default: false
+
+    AgentSkill:
+      type: object
+      required:
+        - id
+        - name
+      description: Agent skill metadata (informational, NOT executable tool)
+      properties:
+        id:
+          type: string
+          description: Unique skill identifier
+          example: "flight_booking"
+
+        name:
+          type: string
+          description: Skill display name
+          example: "Flight Booking"
+
+        description:
+          type: string
+          description: Skill description
+          example: "Search and book flights for customers"
+
+        tags:
+          type: array
+          items:
+            type: string
+          description: Skill categorization tags
+          example: ["booking", "flights", "travel"]
+
+        examples:
+          type: array
+          items:
+            type: string
+          description: Example queries for this skill
+          example:
+            - "Book a flight to New York"
+            - "Search for flights from SFO to JFK"
+
+        inputModes:
+          type: array
+          items:
+            type: string
+          description: Accepted input content types
+          default: ["text/plain"]
+
+        outputModes:
+          type: array
+          items:
+            type: string
+          description: Produced output content types
+          default: ["text/plain"]
+
+    SecurityScheme:
+      type: object
+      description: Security scheme definition (OpenAPI 3.2 format)
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: ["http", "apiKey", "oauth2", "openIdConnect", "mutualTLS"]
+          description: Security scheme type
+
+        scheme:
+          type: string
+          description: HTTP auth scheme (for type=http)
+          enum: ["bearer", "basic"]
+
+        bearerFormat:
+          type: string
+          description: Bearer token format (e.g., JWT)
+
+        in:
+          type: string
+          description: Location of API key (for type=apiKey)
+          enum: ["header", "query", "cookie"]
+
+        name:
+          type: string
+          description: API key parameter name
+
+        flows:
+          type: object
+          description: OAuth2 flows (for type=oauth2)
+
+        openIdConnectUrl:
+          type: string
+          format: uri
+          description: OpenID Connect discovery URL
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+
+tags:
+  - name: discovery
+    description: Agent capability discovery
