@@ -40,6 +40,13 @@ dependencies = [
     "toml>=0.10.2",
     "langfuse>=2.60.7",
     "gymnasium>=1.2.2",
+    "httpx>=0.28.0",
+    "a2a-sdk[http-server]>=0.3.12",
+    "google-adk[a2a]",
+    "mypy>=1.13.0",
+    "types-pyyaml>=6.0.0",
+    "types-toml>=0.10.0",
+    "types-redis>=4.6.0",
 ]
 [project.scripts]
 tau2 = "tau2.cli:main"
@@ -49,11 +56,113 @@ filterwarnings = [
     "ignore::DeprecationWarning:litellm.*:",
     "ignore:Pydantic serializer warnings:UserWarning:pydantic.*:",
 ]
+asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
-ignore = ["E501", "F401", "F541"]
+# A2A test markers
+markers = [
+    "a2a_mock: A2A tests with mocked dependencies (run by default)",
+    "a2a_e2e: A2A end-to-end tests requiring real services (opt-in only)"
+]
+
+# Exclude E2E tests by default
+addopts = "-m 'not a2a_e2e'"
 
 [tool.ruff]
 line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+# Enable additional rule categories for better code quality
+select = [
+    "E4",   # Pycodestyle errors (subset)
+    "E7",   # Pycodestyle errors (subset)
+    "E9",   # Pycodestyle errors (subset)
+    "F",    # Pyflakes - all checks
+    "I",    # isort - import sorting
+    "N",    # pep8-naming - naming conventions
+    "UP",   # pyupgrade - modern Python syntax
+    "B",    # flake8-bugbear - likely bugs and design problems
+    "C4",   # flake8-comprehensions - better comprehensions
+    "DTZ",  # flake8-datetimez - datetime timezone usage
+    "T10",  # flake8-debugger - no debugger statements
+    "EM",   # flake8-errmsg - error message formatting
+    "ICN",  # flake8-import-conventions - import naming
+    "PIE",  # flake8-pie - misc lints
+    "PT",   # flake8-pytest-style - pytest best practices
+    "RET",  # flake8-return - return statement best practices
+    "SIM",  # flake8-simplify - code simplification
+    "TCH",  # flake8-type-checking - type checking imports
+    "ARG",  # flake8-unused-arguments - unused arguments
+    "PTH",  # flake8-use-pathlib - prefer pathlib
+]
+
+ignore = [
+    "E501",    # Line too long (handled by formatter)
+    "F401",    # Imported but unused (common in __init__.py)
+    "F541",    # f-string without placeholders
+    "N802",    # Function name should be lowercase (conflicts with test naming)
+    "N803",    # Argument name should be lowercase (conflicts with type params)
+    "N806",    # Variable in function should be lowercase (conflicts with type aliases)
+    "B008",    # Do not perform function calls in argument defaults (common with FastAPI Depends)
+    "RET504",  # Unnecessary variable assignment before return
+    "SIM108",  # Use ternary operator instead of if-else (sometimes less readable)
+    "DTZ005",  # datetime.now() without timezone (not always needed)
+    "PTH123",  # open() should be replaced by Path.open() (too strict)
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore certain rules in specific file patterns
+"__init__.py" = ["F401", "F403"]  # Allow unused imports and import *
+"tests/**/*.py" = ["ARG001", "ARG002"]  # Allow unused arguments in tests
+"src/tau2/a2a/**/*.py" = []  # No specific ignores for A2A module (strict)
+
+[tool.ruff.lint.isort]
+known-first-party = ["tau2"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+no_implicit_optional = true
+show_error_codes = true
+
+# Allow untyped calls to gradually adopt type hints
+disallow_untyped_calls = false
+
+# Per-module options
+[[tool.mypy.overrides]]
+module = "tau2.a2a.*"
+# Strict type checking for new A2A module
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fs.*",
+    "plotly.*",
+    "sklearn.*",
+    "litellm.*",
+    "langfuse.*",
+    "addict.*",
+    "docstring_parser.*",
+    "a2a.*",
+    "google.adk.*",
+]
+ignore_missing_imports = true
