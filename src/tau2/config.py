@@ -27,8 +27,8 @@ DEFAULT_LLM_ENV_INTERFACE_ARGS = {"temperature": DEFAULT_LLM_ENV_INTERFACE_TEMPE
 
 # LITELLM
 DEFAULT_MAX_RETRIES = 3
-LLM_CACHE_ENABLED = False
-DEFAULT_LLM_CACHE_TYPE = "redis"
+LLM_CACHE_ENABLED = True  # Enable caching to reduce API calls
+DEFAULT_LLM_CACHE_TYPE = "local"  # Use local in-memory cache (no Redis needed)
 
 # REDIS CACHE
 REDIS_HOST = "localhost"
