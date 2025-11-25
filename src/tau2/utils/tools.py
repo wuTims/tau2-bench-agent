@@ -184,36 +184,33 @@ def _evaluate_ast_node(node: ast.AST) -> Any:
     """
     if isinstance(node, ast.Constant):
         return node.value
-    elif isinstance(node, ast.UnaryOp):
+    if isinstance(node, ast.UnaryOp):
         # Handle unary operations like -1, +2, etc.
         operand = _evaluate_ast_node(node.operand)
         if isinstance(node.op, ast.UAdd):
             return +operand
-        elif isinstance(node.op, ast.USub):
+        if isinstance(node.op, ast.USub):
             return -operand
-        else:
-            raise ValueError(f"Unsupported unary operation: {type(node.op).__name__}")
-    elif isinstance(node, ast.List):
+        raise ValueError(f"Unsupported unary operation: {type(node.op).__name__}")
+    if isinstance(node, ast.List):
         return [_evaluate_ast_node(item) for item in node.elts]
-    elif isinstance(node, ast.Dict):
+    if isinstance(node, ast.Dict):
         keys = [_evaluate_ast_node(key) for key in node.keys]
         values = [_evaluate_ast_node(value) for value in node.values]
         return dict(zip(keys, values))
-    elif isinstance(node, ast.Tuple):
+    if isinstance(node, ast.Tuple):
         return tuple(_evaluate_ast_node(item) for item in node.elts)
-    elif isinstance(node, ast.Name):
+    if isinstance(node, ast.Name):
         # Handle special names like True, False, None
         if node.id == "True":
             return True
-        elif node.id == "False":
+        if node.id == "False":
             return False
-        elif node.id == "None":
+        if node.id == "None":
             return None
-        else:
-            # For other names, treat as string (common in tool calls)
-            return node.id
-    else:
-        raise ValueError(f"Unsupported AST node type: {type(node).__name__}")
+        # For other names, treat as string (common in tool calls)
+        return node.id
+    raise ValueError(f"Unsupported AST node type: {type(node).__name__}")
 
 
 def is_functional_tool_call(text: str) -> bool:

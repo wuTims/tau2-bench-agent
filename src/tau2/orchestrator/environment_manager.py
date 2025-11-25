@@ -13,7 +13,7 @@ from tau2.registry import registry
 
 class StartEnvironmentRequest(BaseModel):
     domain: str
-    env_id: Optional[str] = None
+    env_id: str | None = None
 
 
 class StatusResponse(BaseModel):
@@ -130,12 +130,12 @@ class EnvironmentManager:
         host: str = "localhost",
         port: int = 8000,
     ):
-        self.environments: Dict[str, Environment] = {}
+        self.environments: dict[str, Environment] = {}
         self.host = host
         self.port = port
         self.app = FastAPI()
-        self.routes: Dict[str, list] = {}
-        self.trajectories: Dict[str, list[ToolMessage | AssistantMessage]] = {}
+        self.routes: dict[str, list] = {}
+        self.trajectories: dict[str, list[ToolMessage | AssistantMessage]] = {}
 
         # Add routes
         @self.app.get("/status")
@@ -186,7 +186,7 @@ class EnvironmentManager:
         """
         return self.environments[env_id].get_info()
 
-    def start_environment(self, domain: str, env_id: Optional[str] = None):
+    def start_environment(self, domain: str, env_id: str | None = None):
         """
         Start a new environment.
         """

@@ -55,10 +55,10 @@ class LLMAgent(LocalAgent[LLMAgentState]):
 
     def __init__(
         self,
-        tools: List[Tool],
+        tools: list[Tool],
         domain_policy: str,
-        llm: Optional[str] = None,
-        llm_args: Optional[dict] = None,
+        llm: str | None = None,
+        llm_args: dict | None = None,
     ):
         """
         Initialize the LLMAgent.
@@ -74,7 +74,7 @@ class LLMAgent(LocalAgent[LLMAgentState]):
         )
 
     def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> LLMAgentState:
         """Get the initial state of the agent.
 
@@ -160,11 +160,11 @@ class LLMGTAgent(LocalAgent[LLMAgentState]):
 
     def __init__(
         self,
-        tools: List[Tool],
+        tools: list[Tool],
         domain_policy: str,
         task: Task,
-        llm: Optional[str] = None,
-        llm_args: Optional[dict] = None,
+        llm: str | None = None,
+        llm_args: dict | None = None,
         provide_function_args: bool = True,
     ):
         """
@@ -202,7 +202,7 @@ class LLMGTAgent(LocalAgent[LLMAgentState]):
         )
 
     def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> LLMAgentState:
         """Get the initial state of the agent.
 
@@ -274,15 +274,12 @@ class LLMGTAgent(LocalAgent[LLMAgentState]):
         if action.requestor == "user":
             if include_function_args:
                 return f"Instruct the user to perform the following action: {action.get_func_format()}."
-            else:
-                return f"User action: {action.name}."
-        elif action.requestor == "assistant":
+            return f"User action: {action.name}."
+        if action.requestor == "assistant":
             if include_function_args:
                 return f"Perform the following action: {action.get_func_format()}."
-            else:
-                return f"Assistant action: {action.name}."
-        else:
-            raise ValueError(f"Unknown action requestor: {action.requestor}")
+            return f"Assistant action: {action.name}."
+        raise ValueError(f"Unknown action requestor: {action.requestor}")
 
 
 AGENT_SOLO_INSTRUCTION = """
@@ -322,11 +319,11 @@ class LLMSoloAgent(LocalAgent[LLMAgentState]):
 
     def __init__(
         self,
-        tools: List[Tool],
+        tools: list[Tool],
         domain_policy: str,
         task: Task,
-        llm: Optional[str] = None,
-        llm_args: Optional[dict] = None,
+        llm: str | None = None,
+        llm_args: dict | None = None,
     ):
         """
         Initialize the LLMAgent.
@@ -418,7 +415,7 @@ class LLMSoloAgent(LocalAgent[LLMAgentState]):
         return cls.STOP_TOKEN in message.content
 
     def get_init_state(
-        self, message_history: Optional[list[Message]] = None
+        self, message_history: list[Message] | None = None
     ) -> LLMAgentState:
         """Get the initial state of the agent.
 
@@ -439,7 +436,7 @@ class LLMSoloAgent(LocalAgent[LLMAgentState]):
         )
 
     def generate_next_message(
-        self, message: Optional[ValidAgentInputMessage], state: LLMAgentState
+        self, message: ValidAgentInputMessage | None, state: LLMAgentState
     ) -> tuple[AssistantMessage, LLMAgentState]:
         """
         Respond to a user or tool message.

@@ -55,6 +55,31 @@ def add_run_args(parser):
         default={"temperature": DEFAULT_LLM_TEMPERATURE_AGENT},
         help=f"The arguments to pass to the LLM for the agent. Default is '{{\"temperature\": {DEFAULT_LLM_TEMPERATURE_AGENT}}}'.",
     )
+    # A2A-specific arguments
+    parser.add_argument(
+        "--agent-a2a-endpoint",
+        type=str,
+        default=None,
+        help="The A2A agent endpoint URL (required when --agent is a2a_agent). Example: http://localhost:8080",
+    )
+    parser.add_argument(
+        "--agent-a2a-auth-token",
+        type=str,
+        default=None,
+        help="Bearer token for A2A agent authentication (optional).",
+    )
+    parser.add_argument(
+        "--agent-a2a-timeout",
+        type=int,
+        default=300,
+        help="Timeout in seconds for A2A agent responses. Default is 300.",
+    )
+    parser.add_argument(
+        "--a2a-debug",
+        action="store_true",
+        default=False,
+        help="Enable verbose debug logging for A2A protocol (message payloads, context lifecycle, tool descriptions). Sets A2A modules to TRACE level.",
+    )
     parser.add_argument(
         "--user",
         type=str,
@@ -150,8 +175,22 @@ def main():
     # Run command
     run_parser = subparsers.add_parser("run", help="Run a benchmark")
     add_run_args(run_parser)
-    run_parser.set_defaults(
-        func=lambda args: run_domain(
+    def run_command_handler(args):
+        # Map A2A arguments to RunConfig fields (llm_agent holds endpoint URL for A2A)
+        if args.agent == "a2a_agent":
+            if not args.agent_a2a_endpoint:
+                parser.error("--agent-a2a-endpoint is required when using a2a_agent")
+            llm_agent = args.agent_a2a_endpoint  # A2A endpoint URL
+            llm_args_agent = {}
+            if args.agent_a2a_auth_token:
+                llm_args_agent["auth_token"] = args.agent_a2a_auth_token
+            if args.agent_a2a_timeout:
+                llm_args_agent["timeout"] = args.agent_a2a_timeout
+        else:
+            llm_agent = args.agent_llm  # LLM model name
+            llm_args_agent = args.agent_llm_args
+
+        return run_domain(
             RunConfig(
                 domain=args.domain,
                 task_set_name=args.task_set_name,
@@ -159,8 +198,8 @@ def main():
                 task_ids=args.task_ids,
                 num_tasks=args.num_tasks,
                 agent=args.agent,
-                llm_agent=args.agent_llm,
-                llm_args_agent=args.agent_llm_args,
+                llm_agent=llm_agent,
+                llm_args_agent=llm_args_agent,
                 user=args.user,
                 llm_user=args.user_llm,
                 llm_args_user=args.user_llm_args,
@@ -172,9 +211,11 @@ def main():
                 seed=args.seed,
                 log_level=args.log_level,
                 enforce_communication_protocol=args.enforce_communication_protocol,
+                a2a_debug=args.a2a_debug,
             )
         )
-    )
+
+    run_parser.set_defaults(func=run_command_handler)
 
     # Play command
     play_parser = subparsers.add_parser(

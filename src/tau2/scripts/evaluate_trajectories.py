@@ -28,7 +28,7 @@ def is_solo_mode(results: Results) -> bool:
 def compute_simulation_rewards(
     results: Results,
     evaluation_type: EvaluationType = EvaluationType.ALL,
-    console: Optional[Console] = None,
+    console: Console | None = None,
 ) -> Results:
     """
     Compute and update rewards for all simulations in the results.

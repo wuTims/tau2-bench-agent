@@ -7,6 +7,7 @@ from typing import Optional
 
 from loguru import logger
 
+from tau2.agent.a2a_agent import A2AAgent
 from tau2.agent.llm_agent import LLMAgent, LLMGTAgent, LLMSoloAgent
 from tau2.data_model.simulation import (
     AgentInfo,
@@ -45,7 +46,7 @@ def get_environment_info(
     return env_constructor().get_info(include_tool_info=include_tool_info)
 
 
-def load_task_splits(task_set_name: str) -> Optional[dict[str, list[str]]]:
+def load_task_splits(task_set_name: str) -> dict[str, list[str]] | None:
     """
     Loads the task splits for the given domain.
     """
@@ -56,7 +57,7 @@ def load_task_splits(task_set_name: str) -> Optional[dict[str, list[str]]]:
     return task_split_loader()
 
 
-def load_tasks(task_set_name: str, task_split_name: Optional[str] = None) -> list[Task]:
+def load_tasks(task_set_name: str, task_split_name: str | None = None) -> list[Task]:
     """
     Loads the tasks for the given domain.
     """
@@ -68,9 +69,9 @@ def load_tasks(task_set_name: str, task_split_name: Optional[str] = None) -> lis
 
 def get_tasks(
     task_set_name: str,
-    task_split_name: Optional[str] = None,
-    task_ids: Optional[list[str]] = None,
-    num_tasks: Optional[int] = None,
+    task_split_name: str | None = None,
+    task_ids: list[str] | None = None,
+    num_tasks: int | None = None,
 ) -> list[Task]:
     """
     Loads the tasks for the given domain.
@@ -167,6 +168,7 @@ def run_domain(config: RunConfig) -> Results:
         seed=config.seed,
         log_level=config.log_level,
         enforce_communication_protocol=config.enforce_communication_protocol,
+        a2a_debug=config.a2a_debug,
     )
     metrics = compute_metrics(simulation_results)
     ConsoleDisplay.display_agent_metrics(metrics)
@@ -179,20 +181,21 @@ def run_tasks(
     tasks: list[Task],
     agent: str,
     user: str,
-    llm_agent: Optional[str] = None,
-    llm_args_agent: Optional[dict] = None,
-    llm_user: Optional[str] = None,
-    llm_args_user: Optional[dict] = None,
+    llm_agent: str | None = None,
+    llm_args_agent: dict | None = None,
+    llm_user: str | None = None,
+    llm_args_user: dict | None = None,
     num_trials: int = 1,
     max_steps: int = 100,
     max_errors: int = 10,
-    save_to: Optional[str | Path] = None,
+    save_to: str | Path | None = None,
     console_display: bool = True,
     evaluation_type: EvaluationType = EvaluationType.ALL,
     max_concurrency: int = 1,
-    seed: Optional[int] = 300,
-    log_level: Optional[str] = "INFO",
+    seed: int | None = 300,
+    log_level: str | None = "INFO",
     enforce_communication_protocol: bool = False,
+    a2a_debug: bool = False,
 ) -> Results:
     """
     Runs tasks for a given domain.
@@ -222,7 +225,21 @@ def run_tasks(
         save_to = Path(save_to)
     # Set log level from config
     logger.remove()
-    logger.add(lambda msg: print(msg), level=log_level)
+
+    # Configure logger with A2A debug support
+    if a2a_debug:
+        # Add handler for A2A modules at TRACE level
+        def a2a_filter(record):
+            """Filter to enable TRACE level for A2A modules"""
+            module = record.get("name", "")
+            if module.startswith("tau2.a2a") or module.startswith("tau2.agent.a2a_agent"):
+                return record["level"].no >= 5  # TRACE level
+            return record["level"].name == log_level or record["level"].no >= logger.level(log_level).no
+
+        logger.add(lambda msg: print(msg), level="TRACE", filter=a2a_filter)
+    else:
+        logger.add(lambda msg: print(msg), level=log_level)
+
     if len(tasks) == 0:
         raise ValueError("No tasks to run")
     if num_trials <= 0:
@@ -267,9 +284,7 @@ def run_tasks(
         if save_to.exists():
             response = (
                 ConsoleDisplay.console.input(
-                    "[yellow]File [bold]{}[/bold] already exists. Do you want to resume the run? (y/n)[/yellow] ".format(
-                        save_to
-                    )
+                    f"[yellow]File [bold]{save_to}[/bold] already exists. Do you want to resume the run? (y/n)[/yellow] "
                 )
                 .lower()
                 .strip()
@@ -278,7 +293,7 @@ def run_tasks(
                 raise FileExistsError(
                     f"File {save_to} already exists. Please delete it or use a different save_to name."
                 )
-            with open(save_to, "r") as fp:
+            with open(save_to) as fp:
                 prev_simulation_results = Results.model_validate_json(fp.read())
                 # Check if the run config has changed
                 if get_pydantic_hash(prev_simulation_results.info) != get_pydantic_hash(
@@ -293,9 +308,7 @@ def run_tasks(
                     )
                     response = (
                         ConsoleDisplay.console.input(
-                            "[yellow]File [bold]{}[/bold] already exists. Do you want to resume the run? (y/n)[/yellow] ".format(
-                                save_to
-                            )
+                            f"[yellow]File [bold]{save_to}[/bold] already exists. Do you want to resume the run? (y/n)[/yellow] "
                         )
                         .lower()
                         .strip()
@@ -341,7 +354,7 @@ def run_tasks(
         if save_to is None:
             return
         with lock:
-            with open(save_to, "r") as fp:
+            with open(save_to) as fp:
                 ckpt = json.load(fp)
             ckpt["simulations"].append(simulation.model_dump())
             with open(save_to, "w") as fp:
@@ -406,14 +419,14 @@ def run_task(
     task: Task,
     agent: str,
     user: str,
-    llm_agent: Optional[str] = None,
-    llm_args_agent: Optional[dict] = None,
-    llm_user: Optional[str] = None,
-    llm_args_user: Optional[dict] = None,
+    llm_agent: str | None = None,
+    llm_args_agent: dict | None = None,
+    llm_user: str | None = None,
+    llm_args_user: dict | None = None,
     max_steps: int = 100,
     max_errors: int = 10,
     evaluation_type: EvaluationType = EvaluationType.ALL,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     enforce_communication_protocol: bool = False,
 ) -> SimulationRun:
     """
@@ -477,6 +490,13 @@ def run_task(
             llm_args=llm_args_agent,
             task=task,
         )
+    elif issubclass(AgentConstructor, A2AAgent):
+        agent = AgentConstructor.from_cli_args(
+            llm=llm_agent,
+            llm_args=llm_args_agent,
+            tools=environment.get_tools(),
+            domain_policy=environment.get_policy(),
+        )
     elif issubclass(AgentConstructor, GymAgent):
         agent = AgentConstructor(
             tools=environment.get_tools(),
@@ -484,7 +504,7 @@ def run_task(
         )
     else:
         raise ValueError(
-            f"Unknown agent type: {AgentConstructor}. Should be LLMAgent or LLMSoloAgent"
+            f"Unknown agent type: {AgentConstructor}. Should be LLMAgent, LLMSoloAgent, A2AAgent, or GymAgent"
         )
     try:
         user_tools = environment.get_user_tools()
@@ -538,14 +558,14 @@ def get_info(
     domain: str,
     agent: str,
     user: str,
-    llm_agent: Optional[str] = None,
-    llm_args_agent: Optional[dict] = None,
-    llm_user: Optional[str] = None,
-    llm_args_user: Optional[dict] = None,
+    llm_agent: str | None = None,
+    llm_args_agent: dict | None = None,
+    llm_user: str | None = None,
+    llm_args_user: dict | None = None,
     num_trials: int = 1,
     max_steps: int = 100,
     max_errors: int = 10,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> Info:
     user_info = UserInfo(
         implementation=user,

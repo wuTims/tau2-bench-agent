@@ -16,7 +16,7 @@ from tau2.utils import load_file
 
 
 def get_environment(
-    db: Optional[RetailDB] = None,
+    db: RetailDB | None = None,
     solo_mode: bool = False,
 ) -> Environment:
     if solo_mode:
@@ -24,7 +24,7 @@ def get_environment(
     if db is None:
         db = RetailDB.load(RETAIL_DB_PATH)
     tools = RetailTools(db)
-    with open(RETAIL_POLICY_PATH, "r") as fp:
+    with open(RETAIL_POLICY_PATH) as fp:
         policy = fp.read()
     return Environment(
         domain_name="retail",
@@ -33,7 +33,7 @@ def get_environment(
     )
 
 
-def get_tasks(task_split_name: Optional[str] = "base") -> list[Task]:
+def get_tasks(task_split_name: str | None = "base") -> list[Task]:
     tasks = load_file(RETAIL_TASK_SET_PATH)
     tasks = [Task.model_validate(task) for task in tasks]
     if task_split_name is None:

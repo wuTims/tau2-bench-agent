@@ -363,7 +363,7 @@ class ConsoleDisplay:
 
 class MarkdownDisplay:
     @classmethod
-    def display_actions(cls, actions: List[Action]) -> str:
+    def display_actions(cls, actions: list[Action]) -> str:
         """Display actions in markdown format."""
         return f"```json\n{json.dumps([action.model_dump() for action in actions], indent=2)}\n```"
 
@@ -458,7 +458,7 @@ class MarkdownDisplay:
         cls,
         task: Task,
         sim: SimulationRun,
-        reward: Optional[float] = None,
+        reward: float | None = None,
         show_task_id: bool = False,
     ) -> str:
         """Display a single result with all its components in markdown format."""

@@ -411,6 +411,54 @@ To enable LLM calls caching:
 ## Evaluate Your Own Agent
 For local or remote agent evaluation, see our [agent developer guide](src/tau2/agent/README.md).
 
+## A2A Protocol Integration
+
+τ²-bench supports the [Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/) for evaluating remote agents via standardized communication.
+
+### Quick Start
+
+```bash
+# Evaluate a remote A2A agent
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --user-llm claude-3-haiku-20240307
+```
+
+### Local Testing with Nebius
+
+Test A2A integration locally using the included Nebius agent:
+
+```bash
+# 1. Set your Nebius API key (get one at https://tokenfactory.nebius.com/)
+export NEBIUS_API_KEY="your-api-key-here"
+
+# 2. Quick validation (mock domain)
+./specs/001-a2a-integration/scripts/test_simple_agent.sh
+
+# 3. Full domain evaluation (with user simulator)
+./specs/001-a2a-integration/scripts/eval_domain.sh airline 1 5
+```
+
+### Key Concepts
+
+| Argument | Purpose | Example |
+|----------|---------|---------|
+| `--agent a2a_agent` | Enable A2A agent | - |
+| `--agent-a2a-endpoint` | Remote agent URL | `https://your-agent.example.com` |
+| `--user-llm` | User simulator model | `claude-3-haiku-20240307` |
+| `--agent-a2a-auth-token` | Bearer token (optional) | `YOUR_TOKEN_HERE` |
+| `--agent-a2a-timeout` | Request timeout (optional) | `600` (default: 300) |
+
+**Key Points:**
+- Tools execute locally in τ²-bench (remote agent only provides reasoning)
+- User simulator (`--user-llm`) runs independently of the agent type
+- Existing agents and workflows continue to work unchanged
+
+### Learn More
+
+**[→ A2A Quickstart Guide](specs/001-a2a-integration/quickstart.md)** - Complete tutorial with local testing, API setup, troubleshooting, and advanced usage
+
 ## Contributing
 
 We welcome contributions to τ²-bench! Whether you're fixing bugs, adding new features, creating new domains, or contributing experimental research code, please see our [Contributing Guide](CONTRIBUTING.md) for detailed guidelines on:

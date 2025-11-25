@@ -1,0 +1,383 @@
+openapi: 3.0.3
+info:
+  title: A2A Message Protocol
+  version: 1.0.0
+  description: |
+    JSON-RPC 2.0 protocol for Agent-to-Agent (A2A) message exchange.
+    This contract defines the message/send endpoint used by tau2-bench to communicate
+    with remote A2A-compliant agents.
+
+    **Protocol**: JSON-RPC 2.0 over HTTPS
+    **Content-Type**: application/json
+    **Authentication**: Bearer token (optional, agent-dependent)
+
+servers:
+  - url: https://agent.example.com
+    description: Example A2A agent endpoint
+
+paths:
+  /message/send:
+    post:
+      summary: Send message to A2A agent
+      description: |
+        Send a message to the A2A agent and receive a response.
+        Uses JSON-RPC 2.0 format with method "message/send".
+      operationId: sendMessage
+      tags:
+        - messaging
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JSONRPCRequest'
+            examples:
+              userMessage:
+                summary: User message with tool descriptions
+                value:
+                  jsonrpc: "2.0"
+                  id: "req-123e4567-e89b-12d3-a456-426614174000"
+                  method: "message/send"
+                  params:
+                    message:
+                      messageId: "msg-123e4567-e89b-12d3-a456-426614174001"
+                      role: "user"
+                      parts:
+                        - text: |
+                            <system>
+                            You are a helpful customer service agent for an airline.
+                            You can help users book flights, check reservations, and modify bookings.
+                            </system>
+
+                            <available_tools>
+                            - search_flights(origin: string, destination: string, date: string)
+                              Description: Search available flights
+                            - book_flight(flight_id: string, passenger_info: object)
+                              Description: Book a flight
+                            </available_tools>
+
+                            User: I need to book a flight from SFO to JFK on December 15th.
+                      contextId: null
+
+              toolResultMessage:
+                summary: Tool result message
+                value:
+                  jsonrpc: "2.0"
+                  id: "req-123e4567-e89b-12d3-a456-426614174002"
+                  method: "message/send"
+                  params:
+                    message:
+                      messageId: "msg-123e4567-e89b-12d3-a456-426614174003"
+                      role: "user"
+                      parts:
+                        - text: |
+                            Tool Result (search_flights): Found 5 flights: [{"id": "AA123", "departure": "10:00", "price": 350}]
+                      contextId: "ctx-abc123"
+
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JSONRPCResponse'
+              examples:
+                agentTextResponse:
+                  summary: Agent text response
+                  value:
+                    jsonrpc: "2.0"
+                    id: "req-123e4567-e89b-12d3-a456-426614174000"
+                    result:
+                      message:
+                        messageId: "msg-agent-001"
+                        role: "agent"
+                        parts:
+                          - text: "I'll search for flights from SFO to JFK on December 15th."
+                        contextId: "ctx-abc123"
+
+                agentToolCallResponse:
+                  summary: Agent requesting tool execution
+                  value:
+                    jsonrpc: "2.0"
+                    id: "req-123e4567-e89b-12d3-a456-426614174000"
+                    result:
+                      message:
+                        messageId: "msg-agent-002"
+                        role: "agent"
+                        parts:
+                          - data:
+                              tool_call:
+                                name: "search_flights"
+                                arguments:
+                                  origin: "SFO"
+                                  destination: "JFK"
+                                  date: "2025-12-15"
+                        contextId: "ctx-abc123"
+
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JSONRPCError'
+              example:
+                jsonrpc: "2.0"
+                id: "req-123e4567-e89b-12d3-a456-426614174000"
+                error:
+                  code: -32600
+                  message: "Invalid Request"
+                  data:
+                    details: "Missing required field: message.role"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JSONRPCError'
+              example:
+                jsonrpc: "2.0"
+                id: null
+                error:
+                  code: -32001
+                  message: "Unauthorized"
+                  data:
+                    details: "Bearer token required"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JSONRPCError'
+              example:
+                jsonrpc: "2.0"
+                id: "req-123e4567-e89b-12d3-a456-426614174000"
+                error:
+                  code: -32603
+                  message: "Internal error"
+                  data:
+                    details: "Agent processing error"
+
+        '504':
+          description: Gateway timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JSONRPCError'
+              example:
+                jsonrpc: "2.0"
+                id: "req-123e4567-e89b-12d3-a456-426614174000"
+                error:
+                  code: -32000
+                  message: "Server error"
+                  data:
+                    details: "Agent response timeout"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token for agent authentication
+
+  schemas:
+    JSONRPCRequest:
+      type: object
+      required:
+        - jsonrpc
+        - id
+        - method
+        - params
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+          description: JSON-RPC version
+        id:
+          type: string
+          description: Request identifier (UUID)
+        method:
+          type: string
+          enum: ["message/send"]
+          description: RPC method name
+        params:
+          type: object
+          required:
+            - message
+          properties:
+            message:
+              $ref: '#/components/schemas/Message'
+            configuration:
+              type: object
+              description: Optional request configuration
+              properties:
+                timeout:
+                  type: integer
+                  description: Response timeout in seconds
+                  minimum: 1
+
+    JSONRPCResponse:
+      type: object
+      required:
+        - jsonrpc
+        - id
+        - result
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        id:
+          type: string
+          description: Request identifier (matches request)
+        result:
+          type: object
+          required:
+            - message
+          properties:
+            message:
+              $ref: '#/components/schemas/Message'
+
+    JSONRPCError:
+      type: object
+      required:
+        - jsonrpc
+        - id
+        - error
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        id:
+          type: string
+          nullable: true
+          description: Request identifier (null if parsing failed)
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: integer
+              description: |
+                Error code:
+                - -32700: Parse error
+                - -32600: Invalid Request
+                - -32601: Method not found
+                - -32602: Invalid params
+                - -32603: Internal error
+                - -32000 to -32099: Server error (implementation-defined)
+            message:
+              type: string
+              description: Error message
+            data:
+              type: object
+              description: Additional error information
+
+    Message:
+      type: object
+      required:
+        - messageId
+        - role
+        - parts
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Unique message identifier
+        role:
+          type: string
+          enum: ["user", "agent"]
+          description: Message sender role
+        parts:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MessagePart'
+          description: Message content parts
+        contextId:
+          type: string
+          nullable: true
+          description: Session context identifier (server-generated)
+        taskId:
+          type: string
+          nullable: true
+          description: Task identifier (server-managed)
+        metadata:
+          type: object
+          description: Additional message metadata
+
+    MessagePart:
+      oneOf:
+        - $ref: '#/components/schemas/TextPart'
+        - $ref: '#/components/schemas/DataPart'
+        - $ref: '#/components/schemas/FilePart'
+      discriminator:
+        propertyName: partType
+        mapping:
+          text: '#/components/schemas/TextPart'
+          data: '#/components/schemas/DataPart'
+          file: '#/components/schemas/FilePart'
+
+    TextPart:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Plain text content
+        metadata:
+          type: object
+          description: Part-specific metadata
+
+    DataPart:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          description: Structured JSON data
+          example:
+            tool_call:
+              name: "search_flights"
+              arguments:
+                origin: "SFO"
+                destination: "JFK"
+        metadata:
+          type: object
+          description: Part-specific metadata
+
+    FilePart:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: object
+          description: File reference with metadata
+          required:
+            - url
+          properties:
+            url:
+              type: string
+              format: uri
+              description: File URL
+            mimeType:
+              type: string
+              description: MIME type
+            size:
+              type: integer
+              description: File size in bytes
+        metadata:
+          type: object
+          description: Part-specific metadata
+
+tags:
+  - name: messaging
+    description: Message exchange operations

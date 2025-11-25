@@ -40,7 +40,7 @@ def check_and_load_submission_data(
         return False, f"Submission file {submission_file} not found", None
 
     submission = None
-    with open(submission_file, "r") as f:
+    with open(submission_file) as f:
         submission = Submission.model_validate_json(f.read())
 
     # Check that trajectory files directory exists

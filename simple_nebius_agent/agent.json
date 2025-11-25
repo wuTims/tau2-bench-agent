@@ -1,0 +1,19 @@
+{
+  "name": "simple_nebius_agent",
+  "url": "http://localhost:8001/a2a/simple_nebius_agent",
+  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
+  "skills": [
+    {
+      "id": "general-conversation",
+      "name": "General Conversation",
+      "description": "Can engage in general conversation and answer questions.",
+      "tags": ["conversation", "qa"]
+    }
+  ]
+}

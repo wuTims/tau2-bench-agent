@@ -14,7 +14,7 @@ from tau2.utils.display import ConsoleDisplay
 from tau2.utils.utils import DATA_DIR
 
 
-def get_available_simulations(sim_dir: Optional[Path] = None):
+def get_available_simulations(sim_dir: Path | None = None):
     """Get list of available simulation result files."""
     if sim_dir is None:
         sim_dir = Path(DATA_DIR) / "simulations"
@@ -156,10 +156,10 @@ def save_simulation_note(
 
 
 def main(
-    sim_file: Optional[str] = None,
+    sim_file: str | None = None,
     only_show_failed: bool = False,
     only_show_all_failed: bool = False,
-    sim_dir: Optional[str] = None,
+    sim_dir: str | None = None,
 ):
     # Get available simulation files
     if sim_file is None:
@@ -265,9 +265,8 @@ def main(
                     )
                     ConsoleDisplay.display_simulation(sim, show_details=True)
                 continue
-            else:
-                ConsoleDisplay.console.print("[red]Invalid simulation number[/]")
-                continue
+            ConsoleDisplay.console.print("[red]Invalid simulation number[/]")
+            continue
 
         elif results and choice == "4":
             # Show list of tasks
@@ -287,9 +286,8 @@ def main(
                 ConsoleDisplay.console.clear()
                 ConsoleDisplay.display_task(results.tasks[task_num - 1])
                 continue
-            else:
-                ConsoleDisplay.console.print("[red]Invalid task number[/]")
-                continue
+            ConsoleDisplay.console.print("[red]Invalid task number[/]")
+            continue
 
         else:  # Exit options
             break
