@@ -45,9 +45,9 @@ The E2E tests require the ADK agent in `tau2_agent/` to be properly configured w
 Start the ADK server manually in one terminal and run tests in another:
 
 ```bash
-# Terminal 1: Start ADK server
+# Terminal 1: Start ADK server (from project root containing agent subdirectory)
 cd /workspaces/agent-beats/tau2-bench-agent
-python -m google.adk.dev_server --agents-dir=./tau2_agent --port=8000
+adk api_server --a2a . --port 8000
 
 # Terminal 2: Run E2E tests
 pytest -m a2a_e2e -v
@@ -148,7 +148,11 @@ kill -9 <PID>
 Check that ADK is properly installed:
 
 ```bash
-python -c "from google.adk.cli.fast_api import get_fast_api_app; print('ADK installed')"
+# Verify ADK CLI is available
+adk --help
+
+# Or verify Python module
+python -c "from google.adk.agents import LlmAgent; print('ADK installed')"
 ```
 
 ### Tests Timing Out
@@ -156,7 +160,7 @@ python -c "from google.adk.cli.fast_api import get_fast_api_app; print('ADK inst
 If tests timeout waiting for the server:
 
 1. Check server logs for errors
-2. Verify port 8000 is accessible: `curl http://localhost:8000/.well-known/agent-card.json`
+2. Verify agent is accessible: `curl http://localhost:8000/a2a/tau2_agent/.well-known/agent-card.json`
 3. Increase timeout in fixtures (see `conftest.py`)
 
 ### Import Errors
@@ -194,9 +198,7 @@ jobs:
 
       - name: Start ADK server
         run: |
-          python -m google.adk.dev_server \
-            --agents-dir=./tau2_agent \
-            --port=8000 &
+          adk api_server --a2a . --port 8000 &
           sleep 5  # Wait for server startup
 
       - name: Run E2E tests
@@ -229,7 +231,7 @@ Typical workflow when developing A2A features:
 pytest tests/test_a2a_client/ tests/test_adk_server/ -v
 
 # 2. Once mock tests pass, start server for E2E validation
-python -m google.adk.dev_server --agents-dir=./tau2_agent --port=8000
+adk api_server --a2a . --port 8000
 
 # 3. Run E2E tests in another terminal
 pytest -m a2a_e2e -v

@@ -1,7 +1,11 @@
 from collections.abc import Callable
 import os
 
+from dotenv import load_dotenv
 import pytest
+
+# Load .env file early so all fixtures and tests have access to env vars
+load_dotenv()
 
 from tau2.data_model.tasks import Task
 from tau2.environment.environment import Environment
@@ -96,6 +100,36 @@ def test_user_llm_config(nebius_llm_config):
         "llm_args": {
             "api_key": nebius_llm_config["api_key"],
             "api_base": nebius_llm_config["api_base"],
+            "temperature": 0.0,
+        }
+    }
+
+
+@pytest.fixture
+def anthropic_api_configured():
+    """Skip test if ANTHROPIC_API_KEY is not configured."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        pytest.skip("ANTHROPIC_API_KEY not set - skipping test requiring Anthropic API")
+    return api_key
+
+
+@pytest.fixture
+def anthropic_llm_config(anthropic_api_configured):
+    """Anthropic Claude configuration for user simulator (requires ANTHROPIC_API_KEY)"""
+    return {
+        "model": "claude-3-haiku-20240307",
+        "api_key": anthropic_api_configured,
+    }
+
+
+@pytest.fixture
+def anthropic_user_llm_config(anthropic_llm_config):
+    """Anthropic-based user simulator LLM configuration"""
+    return {
+        "llm": anthropic_llm_config["model"],
+        "llm_args": {
+            "api_key": anthropic_llm_config["api_key"],
             "temperature": 0.0,
         }
     }
