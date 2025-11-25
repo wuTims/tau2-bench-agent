@@ -53,6 +53,7 @@ class A2AClient:
                 timeout=httpx.Timeout(self.config.timeout),
                 verify=self.config.verify_ssl,
                 headers=self._build_headers(),
+                follow_redirects=True,
             )
         return self._http_client
 
@@ -287,23 +288,81 @@ class A2AClient:
 
                 # Extract result
                 result = rpc_response.get("result", {})
-                result_message = result.get("message", {})
 
-                # Extract response content
-                response_parts = result_message.get("parts", [])
+                # Extract response content - handle multiple A2A response formats
                 response_texts = []
 
-                for part in response_parts:
-                    if "text" in part:
-                        response_texts.append(part["text"])
+                # Format 1: Google ADK style - artifacts array
+                artifacts = result.get("artifacts", [])
+                if artifacts:
+                    for artifact in artifacts:
+                        artifact_parts = artifact.get("parts", [])
+                        for part in artifact_parts:
+                            if "text" in part:
+                                response_texts.append(part["text"])
+
+                # Format 2: Direct Message response - result.parts (per A2A spec)
+                # When server returns a Message (not Task), parts are at result level
+                if not response_texts:
+                    direct_parts = result.get("parts", [])
+                    for part in direct_parts:
+                        if "text" in part:
+                            response_texts.append(part["text"])
+
+                # Format 3: TaskStatusUpdateEvent - status.message.parts (ADK streaming)
+                if not response_texts:
+                    status = result.get("status", {})
+                    status_message = status.get("message", {})
+                    status_parts = status_message.get("parts", [])
+                    for part in status_parts:
+                        if "text" in part:
+                            response_texts.append(part["text"])
+
+                # Format 4: Legacy wrapper format - result.message.parts
+                # Some implementations wrap the message in a 'message' field
+                if not response_texts:
+                    result_message = result.get("message", {})
+                    message_parts = result_message.get("parts", [])
+                    for part in message_parts:
+                        if "text" in part:
+                            response_texts.append(part["text"])
+
+                # Format 5: History-based - last agent message
+                if not response_texts:
+                    history = result.get("history", [])
+                    for msg in reversed(history):
+                        if msg.get("role") == "agent":
+                            msg_parts = msg.get("parts", [])
+                            for part in msg_parts:
+                                if "text" in part:
+                                    response_texts.append(part["text"])
+                            break
 
                 response_content = "\n".join(response_texts)
+
+                # Debug: Log actual response content
+                if response_content:
+                    logger.debug(
+                        "A2A agent response content",
+                        content_preview=response_content[:500],
+                        content_length=len(response_content),
+                    )
+                else:
+                    logger.warning(
+                        "A2A agent returned empty response",
+                        request_id=request_id,
+                        result_keys=list(result.keys()),
+                        artifacts_count=len(artifacts),
+                    )
 
                 # Count output tokens
                 output_tokens = estimate_tokens(response_content)
 
-                # Extract context_id
-                response_context_id = result_message.get("contextId")
+                # Extract context_id - try multiple locations
+                response_context_id = (
+                    result.get("contextId")  # Google ADK format
+                    or result.get("message", {}).get("contextId")  # Standard A2A
+                )
 
                 # Calculate latency
                 latency_ms = (time.perf_counter() - start_time) * 1000

@@ -229,5 +229,14 @@ def a2a_to_tau2_assistant_message(content: str) -> AssistantMessage:
     if tool_calls:
         # Return AssistantMessage with tool calls
         return AssistantMessage(role="assistant", content=None, tool_calls=tool_calls)
+
+    # Handle empty responses - agent may have returned no content
+    if not content or not content.strip():
+        logger.warning(
+            "A2A agent returned empty content, using fallback message",
+            original_content=repr(content),
+        )
+        content = "I apologize, but I was unable to generate a response. Could you please rephrase your request?"
+
     # Return AssistantMessage with text content
     return AssistantMessage(role="assistant", content=content, tool_calls=None)
