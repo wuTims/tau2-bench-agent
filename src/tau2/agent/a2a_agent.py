@@ -104,11 +104,17 @@ class A2AAgent(LocalAgent):
 
         Raises:
             A2AError: If communication with A2A agent fails
+
+        Note on async/sync bridge:
+            This method is synchronous (required by tau2's BaseAgent interface)
+            but uses httpx AsyncClient for HTTP requests. The bridge pattern
+            (asyncio.run + fallback to new_event_loop) handles nested event
+            loop contexts. Performance impact is minimal for single-request
+            scenarios but may add overhead in high-frequency async contexts.
         """
         import asyncio
 
-        # This is a synchronous method but we need async operations
-        # Run async operations in sync context
+        # Async/sync bridge: Run async HTTP operations in synchronous context
         async def _async_generate():
             # Translate tau2 message to A2A content
             # Include tools for user messages so agent knows what's available

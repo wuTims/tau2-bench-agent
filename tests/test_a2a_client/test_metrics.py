@@ -1,12 +1,13 @@
 """Unit tests for A2A protocol metrics collection."""
 
-import pytest
-from unittest.mock import AsyncMock, Mock, patch
 import time
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from tau2.a2a.client import A2AClient
-from tau2.a2a.models import A2AConfig
 from tau2.a2a.metrics import ProtocolMetrics, estimate_tokens
+from tau2.a2a.models import A2AConfig
 
 
 class TestProtocolMetrics:

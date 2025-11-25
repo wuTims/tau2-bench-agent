@@ -63,7 +63,7 @@ async def test_debug_logging_message_payloads(
     def mock_handler(request: httpx.Request):
         if request.url.path == "/.well-known/agent-card.json":
             return httpx.Response(200, json=mock_agent_card)
-        elif request.url.path == "/":
+        if request.url.path == "/":
             return httpx.Response(200, json=mock_a2a_response)
         return httpx.Response(404)
 
@@ -106,7 +106,7 @@ def test_debug_logging_context_lifecycle(
     def mock_handler(request: httpx.Request):
         if request.url.path == "/.well-known/agent-card.json":
             return httpx.Response(200, json=mock_agent_card)
-        elif request.url.path == "/":
+        if request.url.path == "/":
             # Return response with context_id
             response = mock_a2a_response.copy()
             return httpx.Response(200, json=response)
@@ -169,7 +169,7 @@ async def test_debug_logging_protocol_errors(a2a_config, caplog):
     def mock_handler(request: httpx.Request):
         if request.url.path == "/.well-known/agent-card.json":
             return httpx.Response(200, json={"name": "Test", "url": "http://test"})
-        elif request.url.path == "/":
+        if request.url.path == "/":
             # Return error response
             error_response = {
                 "jsonrpc": "2.0",
@@ -210,7 +210,7 @@ def test_debug_logging_tool_descriptions(a2a_config, mock_a2a_response, caplog):
     def mock_handler(request: httpx.Request):
         if request.url.path == "/.well-known/agent-card.json":
             return httpx.Response(200, json={"name": "Test", "url": "http://test"})
-        elif request.url.path == "/":
+        if request.url.path == "/":
             # Verify request contains tool descriptions
             request_data = json.loads(request.content)
             message_content = request_data["params"]["message"]["parts"][0]["text"]

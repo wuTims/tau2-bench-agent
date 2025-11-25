@@ -8,12 +8,12 @@ Run with: pytest tests/test_a2a_client/test_performance.py -v
 """
 
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from tau2.agent.a2a_agent import A2AAgent
 from tau2.a2a.models import A2AAgentState, A2AConfig
+from tau2.agent.a2a_agent import A2AAgent
 from tau2.data_model.message import UserMessage
 from tau2.environment.tool import Tool
 
@@ -43,7 +43,10 @@ async def test_a2a_message_translation_overhead(a2a_config, sample_tools):
     Measures time to translate tau2 messages to A2A format and back.
     Target: Translation should add <50ms per message.
     """
-    from tau2.a2a.translation import a2a_to_tau2_assistant_message, tau2_to_a2a_message_content
+    from tau2.a2a.translation import (
+        a2a_to_tau2_assistant_message,
+        tau2_to_a2a_message_content,
+    )
 
     # Create sample message
     user_msg = UserMessage(
@@ -152,7 +155,7 @@ async def test_a2a_client_initialization_overhead(a2a_config, sample_tools):
 
 @pytest.mark.asyncio
 @pytest.mark.slow
-async def test_a2a_full_request_cycle_overhead(mock_a2a_agent_endpoint, sample_tools):
+async def test_a2a_full_request_cycle_overhead(mock_a2a_agent, sample_tools):
     """
     Test full A2A request cycle overhead.
 
@@ -182,51 +185,45 @@ async def test_a2a_full_request_cycle_overhead(mock_a2a_agent_endpoint, sample_t
 
     config = A2AConfig(endpoint="http://localhost:8080", timeout=300)
 
-    # Patch httpx to avoid real HTTP calls
-    with patch("httpx.AsyncClient") as mock_client_class:
-        mock_client = Mock()
-        mock_client.post.return_value = mock_response
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+    # Create async mock client
+    mock_client = AsyncMock()
+    mock_client.post.return_value = mock_response
 
-        client = A2AClient(config=config)
+    # Create client with mock
+    client = A2AClient(config=config, http_client=mock_client)
 
-        # Create user message
-        user_msg = UserMessage(
-            role="user",
-            content="Search for flights from SF to LA",
+    # Create message content (already translated)
+    message_content = "Search for flights from SF to LA"
+
+    # Measure full cycle time
+    timings = []
+    for _ in range(10):
+        start = time.perf_counter()
+
+        # Send message (includes HTTP, parsing)
+        _, _ = await client.send_message(
+            message_content=message_content,
+            context_id=None,
         )
 
-        # Measure full cycle time
-        timings = []
-        for _ in range(10):
-            start = time.perf_counter()
+        cycle_time = time.perf_counter() - start
+        timings.append(cycle_time)
 
-            # Send message (includes translation, HTTP, parsing)
-            _, _ = await client.send_message(
-                message=user_msg,
-                context_id=None,
-                tools=sample_tools,
-            )
+    avg_time = sum(timings) / len(timings)
+    min_time = min(timings)
+    max_time = max(timings)
 
-            cycle_time = time.perf_counter() - start
-            timings.append(cycle_time)
+    print(f"\nFull Request Cycle Performance:")
+    print(f"  Average: {avg_time * 1000:.2f}ms")
+    print(f"  Min: {min_time * 1000:.2f}ms")
+    print(f"  Max: {max_time * 1000:.2f}ms")
+    print(f"  Target: <300ms per request")
 
-        avg_time = sum(timings) / len(timings)
-        min_time = min(timings)
-        max_time = max(timings)
-
-        print(f"\nFull Request Cycle Performance:")
-        print(f"  Average: {avg_time * 1000:.2f}ms")
-        print(f"  Min: {min_time * 1000:.2f}ms")
-        print(f"  Max: {max_time * 1000:.2f}ms")
-        print(f"  Target: <300ms per request")
-
-        # Note: This test uses mocked HTTP, so times will be artificially low
-        # Real overhead will include actual network latency
-        print(
-            f"\n  Note: Test uses mocked HTTP. Real overhead = "
-            f"measured + network latency"
-        )
+    # Note: This test uses mocked HTTP, so times will be artificially low
+    # Real overhead will include actual network latency
+    print(
+        f"\n  Note: Test uses mocked HTTP. Real overhead = measured + network latency"
+    )
 
 
 @pytest.mark.asyncio
@@ -268,7 +265,9 @@ async def test_a2a_state_management_overhead(a2a_config, sample_tools):
 
     # Assert: State operations should be very fast (<10ms)
     assert init_time < 0.01, f"State init too slow: {init_time * 1000:.2f}ms > 10ms"
-    assert update_time < 0.01, f"State update too slow: {update_time * 1000:.2f}ms > 10ms"
+    assert update_time < 0.01, (
+        f"State update too slow: {update_time * 1000:.2f}ms > 10ms"
+    )
 
 
 def test_performance_summary():

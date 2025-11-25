@@ -1,13 +1,14 @@
 """Integration tests for A2A metrics export functionality."""
 
 import json
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
-from tau2.agent.a2a_agent import A2AAgent
+import pytest
+
+from tau2.a2a.metrics import AggregatedMetrics, ProtocolMetrics
 from tau2.a2a.models import A2AConfig
-from tau2.a2a.metrics import ProtocolMetrics, AggregatedMetrics
+from tau2.agent.a2a_agent import A2AAgent
 from tau2.data_model.message import UserMessage
 from tau2.environment.tool import Tool
 
@@ -147,9 +148,7 @@ class TestMetricsExport:
 class TestA2AAgentMetricsIntegration:
     """Test metrics integration with A2AAgent."""
 
-    def test_agent_collects_metrics_during_execution(
-        self, mock_a2a_agent_with_metrics
-    ):
+    def test_agent_collects_metrics_during_execution(self, mock_a2a_agent_with_metrics):
         """Test that A2AAgent collects metrics during message generation."""
         agent, mock_client = mock_a2a_agent_with_metrics
 
@@ -169,9 +168,7 @@ class TestA2AAgentMetricsIntegration:
         assert len(metrics) == 1
         assert metrics[0].endpoint == "http://localhost:8080"
 
-    def test_agent_exports_metrics_summary(
-        self, mock_a2a_agent_with_metrics
-    ):
+    def test_agent_exports_metrics_summary(self, mock_a2a_agent_with_metrics):
         """Test that A2AAgent can export metrics summary."""
         agent, mock_client = mock_a2a_agent_with_metrics
 
@@ -269,7 +266,7 @@ class TestMetricsFileExport:
         # Verify file exists and is valid JSON
         assert output_file.exists()
 
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             loaded = json.load(f)
 
         assert loaded["task_id"] == "test_task"
@@ -314,7 +311,7 @@ class TestMetricsFileExport:
             json.dump(existing_results, f, indent=2)
 
         # Verify
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             loaded = json.load(f)
 
         assert "a2a_protocol_metrics" in loaded
@@ -329,7 +326,6 @@ class TestMetricsFileExport:
 def mock_a2a_agent_with_metrics():
     """Create a mock A2AAgent with metrics collection enabled."""
     import asyncio
-    from unittest.mock import AsyncMock
 
     # Create config
     config = A2AConfig(endpoint="http://localhost:8080")

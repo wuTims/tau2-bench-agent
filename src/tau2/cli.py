@@ -176,18 +176,18 @@ def main():
     run_parser = subparsers.add_parser("run", help="Run a benchmark")
     add_run_args(run_parser)
     def run_command_handler(args):
-        # Map A2A-specific arguments to llm_agent and llm_args_agent
+        # Map A2A arguments to RunConfig fields (llm_agent holds endpoint URL for A2A)
         if args.agent == "a2a_agent":
             if not args.agent_a2a_endpoint:
                 parser.error("--agent-a2a-endpoint is required when using a2a_agent")
-            llm_agent = args.agent_a2a_endpoint
+            llm_agent = args.agent_a2a_endpoint  # A2A endpoint URL
             llm_args_agent = {}
             if args.agent_a2a_auth_token:
                 llm_args_agent["auth_token"] = args.agent_a2a_auth_token
             if args.agent_a2a_timeout:
                 llm_args_agent["timeout"] = args.agent_a2a_timeout
         else:
-            llm_agent = args.agent_llm
+            llm_agent = args.agent_llm  # LLM model name
             llm_args_agent = args.agent_llm_args
 
         return run_domain(
