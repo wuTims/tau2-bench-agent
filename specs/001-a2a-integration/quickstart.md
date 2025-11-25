@@ -95,6 +95,140 @@ tau2 run airline \
 
 ---
 
+## Quick Start: Local Agent Test
+
+For quick local testing and development, use the **Nebius agent** - a minimal ADK agent that wraps the Nebius Llama 3.1 8B API.
+
+### Prerequisites
+
+1. **Nebius API Key**: Sign up at https://tokenfactory.nebius.com/
+2. **Set Environment Variable**:
+   ```bash
+   export NEBIUS_API_KEY="your-api-key-here"
+   ```
+
+### Option 1: One-Command Test
+
+Run the complete test (starts agent + runs evaluation):
+
+```bash
+./specs/001-a2a-integration/scripts/test_simple_agent.sh
+```
+
+This will:
+1. Start the simple agent on localhost:8001
+2. Wait for it to be ready
+3. Run a tau2-bench evaluation (mock domain)
+4. Display results
+5. Clean up automatically
+
+### Option 2: Manual Testing
+
+**Step 1**: Start the agent:
+```bash
+./specs/001-a2a-integration/scripts/run_simple_agent.sh
+```
+
+**Step 2**: In another terminal, run evaluation:
+```bash
+python -m tau2.cli run \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --domain mock \
+  --num-trials 1
+```
+
+**Step 3**: Stop the agent (Ctrl+C in first terminal)
+
+### Option 3: Automated Pytest Tests
+
+Run the complete test suite with automated server management:
+
+```bash
+# Run all local agent tests
+pytest tests/test_local_eval/ -v
+
+# Run with detailed logging
+pytest tests/test_local_eval/ -v -s --log-cli-level=DEBUG
+
+# Run specific test
+pytest tests/test_local_eval/test_simple_agent_e2e.py::TestAgentDiscovery::test_agent_card_accessible -v
+```
+
+### Verify Agent is Working
+
+Check the agent card:
+```bash
+curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq
+```
+
+Expected output:
+```json
+{
+  "name": "simple_nebius_agent",
+  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
+  "url": "http://localhost:8001/a2a/simple_nebius_agent",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/plain"],
+  "skills": [...]
+}
+```
+
+### Test Different Domains
+
+Once the agent is running, test with different tau2-bench domains:
+
+```bash
+# Airline domain (more complex)
+python -m tau2.cli run \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --domain airline \
+  --num-trials 3
+
+# Retail domain
+python -m tau2.cli run \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --domain retail \
+  --num-trials 3
+```
+
+### Troubleshooting
+
+**Port already in use:**
+```bash
+# Check what's using port 8001
+lsof -i :8001
+
+# Kill the process
+kill $(lsof -t -i:8001)
+```
+
+**API key issues:**
+```bash
+# Verify API key is set
+echo $NEBIUS_API_KEY
+
+# Test API key directly
+curl https://api.tokenfactory.nebius.com/v1/models \
+  -H "Authorization: Bearer $NEBIUS_API_KEY"
+```
+
+### Architecture Details
+
+See [Local Test Architecture](testing/local-test-architecture.md) for detailed information about:
+- Architecture diagrams
+- Component descriptions
+- Extension points
+- Performance baselines
+
+---
+
 ## CLI Options Reference
 
 ### Required Flags
