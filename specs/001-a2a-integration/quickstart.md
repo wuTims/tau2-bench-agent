@@ -8,6 +8,18 @@ This guide shows how to use the A2A protocol integration to evaluate remote agen
 
 ---
 
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Quick Start: Local Testing](#quick-start-local-testing) - Test A2A integration locally with Nebius
+3. [Quick Start: Remote Agent](#quick-start-remote-agent) - Evaluate a remote A2A agent
+4. [CLI Reference](#cli-options-reference)
+5. [Understanding A2A Evaluation](#understanding-a2a-agent-evaluation)
+6. [Troubleshooting](#troubleshooting)
+7. [FAQ](#faq)
+
+---
+
 ## Prerequisites
 
 ### Python Environment
@@ -35,81 +47,24 @@ tau2 --version
 
 ---
 
-## Quick Start: Running Your First A2A Benchmark
+## Quick Start: Local Testing
 
-### 1. Start an A2A Agent (Example)
+This section shows how to test the A2A integration locally using the **simple Nebius agent** - a minimal ADK agent that wraps the Nebius Llama 3.1 8B API.
 
-For testing, you can use a mock A2A agent:
+### Step 1: Get a Nebius API Key
 
-```bash
-# Option A: Use Prism mock server (requires npm)
-npm install -g @stoplight/prism-cli
-prism mock specs/001-a2a-integration/contracts/a2a-message-protocol.yaml --port 8080
-
-# Option B: Use a real A2A agent (if you have one)
-# Follow your agent's setup instructions
-```
-
-### 2. Run Benchmark with A2A Agent
-
-```bash
-# Basic usage: Run airline domain benchmark with A2A agent
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint http://localhost:8080
-
-# Expected output:
-# [INFO] Discovering A2A agent at http://localhost:8080
-# [INFO] Agent card retrieved: Customer Service Agent v1.0.0
-# [INFO] Running benchmark tasks...
-# [INFO] Task airline_001: PASS (3 tool calls, 2.34s)
-# [INFO] Results: 85% pass rate, avg 2.1s per task
-```
-
-### 3. With Authentication
-
-```bash
-# If your agent requires authentication
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://secure-agent.example.com \
-  --agent-a2a-auth-token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-
-# Or use environment variable
-export A2A_AUTH_TOKEN="your-token-here"
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://secure-agent.example.com \
-  --agent-a2a-auth-token $A2A_AUTH_TOKEN
-```
-
-### 4. Configure Timeout
-
-```bash
-# Increase timeout for slow agents (default: 300s)
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint http://localhost:8080 \
-  --agent-a2a-timeout 600  # 10 minutes
-```
-
----
-
-## Quick Start: Local Agent Test
-
-For quick local testing and development, use the **Nebius agent** - a minimal ADK agent that wraps the Nebius Llama 3.1 8B API.
-
-### Prerequisites
-
-1. **Nebius API Key**: Sign up at https://tokenfactory.nebius.com/
-2. **Set Environment Variable**:
+1. Sign up at https://tokenfactory.nebius.com/
+2. Get your API key
+3. Set the environment variable:
    ```bash
    export NEBIUS_API_KEY="your-api-key-here"
    ```
 
-### Option 1: One-Command Test
+### Step 2: Choose Your Testing Method
 
-Run the complete test (starts agent + runs evaluation):
+#### Option A: One-Command Test (Recommended for Quick Validation)
+
+Run the complete test (starts agent + runs evaluation on mock domain):
 
 ```bash
 ./specs/001-a2a-integration/scripts/test_simple_agent.sh
@@ -118,29 +73,83 @@ Run the complete test (starts agent + runs evaluation):
 This will:
 1. Start the simple agent on localhost:8001
 2. Wait for it to be ready
-3. Run a tau2-bench evaluation (mock domain)
+3. Run a tau2-bench evaluation (mock domain, 1 trial)
 4. Display results
 5. Clean up automatically
 
-### Option 2: Manual Testing
+> **Note**: This uses the `mock` domain which is designed for quick validation and doesn't require a user simulator.
 
-**Step 1**: Start the agent:
+#### Option B: Full Domain Evaluation (Recommended for Real Testing)
+
+For proper evaluation on real domains (airline, retail, telecom), use the evaluation script:
+
 ```bash
+# Telecom domain (default) - 1 trial, 5 tasks
+./specs/001-a2a-integration/scripts/eval_domain.sh telecom 1 5
+
+# Airline domain - 1 trial, 5 tasks
+./specs/001-a2a-integration/scripts/eval_domain.sh airline 1 5
+
+# All tasks with multiple trials (takes longer)
+./specs/001-a2a-integration/scripts/eval_domain.sh retail 3
+```
+
+This script:
+- Starts the Nebius agent automatically
+- Uses Nebius gpt-oss-120b for user simulation (uses same API key)
+- Runs tau2-bench evaluation
+- Cleans up after completion
+
+#### Option C: Manual Step-by-Step Testing
+
+**Terminal 1** - Start the agent:
+```bash
+export NEBIUS_API_KEY="your-api-key-here"
 ./specs/001-a2a-integration/scripts/run_simple_agent.sh
 ```
 
-**Step 2**: In another terminal, run evaluation:
+**Terminal 2** - Verify agent is running:
 ```bash
-python -m tau2.cli run \
+curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq
+```
+
+Expected output:
+```json
+{
+  "name": "simple_nebius_agent",
+  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
+  "url": "http://localhost:8001/a2a/simple_nebius_agent",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false
+  }
+}
+```
+
+**Terminal 2** - Run evaluation:
+
+For **mock domain** (no user LLM needed):
+```bash
+tau2 run mock \
   --agent a2a_agent \
   --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
-  --domain mock \
   --num-trials 1
 ```
 
-**Step 3**: Stop the agent (Ctrl+C in first terminal)
+For **real domains** (user LLM required):
+```bash
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --user-llm "openai/openai/gpt-oss-120b" \
+  --user-llm-args '{"base_url": "https://api.tokenfactory.nebius.com/v1/", "api_key": "'"$NEBIUS_API_KEY"'"}' \
+  --num-trials 1 \
+  --num-tasks 5
+```
 
-### Option 3: Automated Pytest Tests
+**Terminal 1** - Stop agent: Press `Ctrl+C`
+
+#### Option D: Automated Pytest Tests
 
 Run the complete test suite with automated server management:
 
@@ -155,50 +164,7 @@ pytest tests/test_local_eval/ -v -s --log-cli-level=DEBUG
 pytest tests/test_local_eval/test_simple_agent_e2e.py::TestAgentDiscovery::test_agent_card_accessible -v
 ```
 
-### Verify Agent is Working
-
-Check the agent card:
-```bash
-curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq
-```
-
-Expected output:
-```json
-{
-  "name": "simple_nebius_agent",
-  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
-  "url": "http://localhost:8001/a2a/simple_nebius_agent",
-  "version": "1.0.0",
-  "capabilities": {
-    "streaming": false
-  },
-  "defaultInputModes": ["text/plain"],
-  "defaultOutputModes": ["text/plain"],
-  "skills": [...]
-}
-```
-
-### Test Different Domains
-
-Once the agent is running, test with different tau2-bench domains:
-
-```bash
-# Airline domain (more complex)
-python -m tau2.cli run \
-  --agent a2a_agent \
-  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
-  --domain airline \
-  --num-trials 3
-
-# Retail domain
-python -m tau2.cli run \
-  --agent a2a_agent \
-  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
-  --domain retail \
-  --num-trials 3
-```
-
-### Troubleshooting
+### Troubleshooting Local Setup
 
 **Port already in use:**
 ```bash
@@ -219,13 +185,114 @@ curl https://api.tokenfactory.nebius.com/v1/models \
   -H "Authorization: Bearer $NEBIUS_API_KEY"
 ```
 
-### Architecture Details
+**Agent logs:**
+```bash
+# View agent server logs (if running in background)
+tail -f /tmp/simple_agent.log
 
-See [Local Test Architecture](testing/local-test-architecture.md) for detailed information about:
-- Architecture diagrams
-- Component descriptions
-- Extension points
-- Performance baselines
+# Or check /tmp/eval_agent.log if using eval_domain.sh
+```
+
+---
+
+## Quick Start: Remote Agent
+
+This section shows how to evaluate a remote A2A agent (not running on localhost).
+
+### Understanding the Architecture
+
+tau2-bench has **two independent LLM configurations**:
+
+```
++---------------------------------------------+
+|  Agent (what you're testing)                |
++---------------------------------------------+
+|  --agent llm_agent                          |
+|    --> --agent-llm <model>                  |  <-- Local LLM
+|                                             |
+|  --agent a2a_agent                          |
+|    --> --agent-a2a-endpoint <url>           |  <-- Remote A2A agent
++---------------------------------------------+
+
++---------------------------------------------+
+|  User Simulator (always runs locally)       |
++---------------------------------------------+
+|  --user-llm <model>                         |  <-- Independent of agent type
++---------------------------------------------+
+```
+
+**Key Point:** When using `a2a_agent`, your remote agent handles reasoning while tau2-bench still runs the user simulator locally using `--user-llm`. This means you **always need to configure a user LLM** for real domains, regardless of agent type.
+
+### Basic A2A Evaluation
+
+```bash
+# Evaluate remote A2A agent with Claude Haiku user simulator
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --user-llm claude-3-haiku-20240307
+```
+
+### With Authentication
+
+```bash
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://secure-agent.example.com \
+  --agent-a2a-auth-token YOUR_TOKEN_HERE \
+  --user-llm claude-3-haiku-20240307
+```
+
+Or use environment variable:
+```bash
+export A2A_AUTH_TOKEN="your-token-here"
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://secure-agent.example.com \
+  --agent-a2a-auth-token $A2A_AUTH_TOKEN \
+  --user-llm claude-3-haiku-20240307
+```
+
+### Configure Timeout for Slow Agents
+
+```bash
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --agent-a2a-timeout 600 \
+  --user-llm claude-3-haiku-20240307
+```
+
+### Choosing Your User LLM
+
+| Model | Cost | Best For |
+|-------|------|----------|
+| `claude-3-haiku-20240307` | $ | **Recommended**: Reliable, cost-effective baseline |
+| `openai/openai/gpt-oss-120b` | $ | Cost-effective with Nebius (requires API key) |
+| `claude-3-5-sonnet-20241022` | $$$ | More sophisticated user behavior testing |
+
+### Complete Example: Full Evaluation
+
+```bash
+# Run complete evaluation on all domains with A2A agent
+tau2 run retail \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --user-llm claude-3-haiku-20240307 \
+  --num-trials 4
+
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --user-llm claude-3-haiku-20240307 \
+  --num-trials 4
+
+tau2 run telecom \
+  --agent a2a_agent \
+  --agent-a2a-endpoint https://your-agent.example.com \
+  --user-llm claude-3-haiku-20240307 \
+  --num-trials 4
+```
 
 ---
 
@@ -237,6 +304,7 @@ See [Local Test Architecture](testing/local-test-architecture.md) for detailed i
 |------|-------------|---------|
 | `--agent a2a_agent` | Select A2A agent type | `--agent a2a_agent` |
 | `--agent-a2a-endpoint URL` | A2A agent base URL | `--agent-a2a-endpoint http://localhost:8080` |
+| `--user-llm MODEL` | User simulator model (for real domains) | `--user-llm claude-3-haiku-20240307` |
 
 ### Optional Flags
 
@@ -244,11 +312,15 @@ See [Local Test Architecture](testing/local-test-architecture.md) for detailed i
 |------|-------------|---------|---------|
 | `--agent-a2a-auth-token TOKEN` | Bearer token for authentication | None | `--agent-a2a-auth-token eyJhbG...` |
 | `--agent-a2a-timeout SECONDS` | Response timeout in seconds | 300 | `--agent-a2a-timeout 600` |
+| `--a2a-debug` | Enable A2A debug logging | False | `--a2a-debug` |
+| `--num-trials N` | Trials per task | 1 | `--num-trials 3` |
+| `--num-tasks N` | Limit number of tasks | All | `--num-tasks 5` |
 
 ### Environment Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
+| `NEBIUS_API_KEY` | Nebius API key (for local testing) | `export NEBIUS_API_KEY=your-key` |
 | `A2A_ENDPOINT` | Default agent endpoint | `export A2A_ENDPOINT=http://localhost:8080` |
 | `A2A_AUTH_TOKEN` | Default bearer token | `export A2A_AUTH_TOKEN=eyJhbG...` |
 
@@ -263,9 +335,9 @@ See [Local Test Architecture](testing/local-test-architecture.md) for detailed i
    - Validates capabilities and authentication requirements
 
 2. **Message Translation**
-   - tau2 internal messages → A2A protocol messages (JSON-RPC)
+   - tau2 internal messages -> A2A protocol messages (JSON-RPC)
    - Tool descriptions sent as text in system instructions
-   - Agent responses → tau2 AssistantMessage format
+   - Agent responses -> tau2 AssistantMessage format
 
 3. **Tool Execution**
    - **Critical**: Tools execute locally in tau2-bench, NOT on remote agent
@@ -279,86 +351,32 @@ See [Local Test Architecture](testing/local-test-architecture.md) for detailed i
 ### Architecture Diagram
 
 ```
-┌──────────────┐                      ┌──────────────┐
-│  tau2-bench  │                      │  A2A Agent   │
-│              │                      │  (Remote)    │
-│ ┌──────────┐ │                      │              │
-│ │Orchestr- │ │  1. Discover Agent   │              │
-│ │  ator    │ ├─────────────────────>│  Agent Card  │
-│ └────┬─────┘ │                      │              │
-│      │       │  2. Send Message     │              │
-│ ┌────▼─────┐ │     (user + tools)   │  ┌────────┐  │
-│ │ A2AAgent │ ├─────────────────────>│  │Reasoning│ │
-│ │          │ │                      │  └────┬───┘  │
-│ │ ┌──────┐ │ │  3. Tool Call Req    │       │      │
-│ │ │Trans-│ │ │<─────────────────────┤   ToolCall   │
-│ │ │lator │ │ │                      │   Decision   │
-│ │ └──────┘ │ │                      │              │
-│ └────┬─────┘ │                      └──────────────┘
-│      │       │
-│ ┌────▼─────┐ │
-│ │Tool Exec-│ │  4. Execute Locally
-│ │  (Local) │ │     (NOT on agent!)
-│ └────┬─────┘ │
-│      │       │
-│ ┌────▼─────┐ │  5. Send Tool Result
-│ │ A2AAgent │ ├─────────────────────>│
-│ └──────────┘ │                      │
-└──────────────┘                      └──────────────┘
-```
-
----
-
-## Example: Running Airline Domain Benchmark
-
-### Full Example with Metrics
-
-```bash
-# Run airline benchmark with detailed metrics
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint http://localhost:8080 \
-  --agent-a2a-timeout 300 \
-  --output-dir results/a2a-airline \
-  --verbose
-
-# Output directory structure:
-# results/a2a-airline/
-# ├── trajectories/       # Task execution traces
-# ├── metrics.json        # Evaluation metrics + A2A protocol metrics
-# └── summary.txt         # Human-readable summary
-```
-
-### Metrics Output
-
-`metrics.json` includes A2A-specific metrics:
-
-```json
-{
-  "agent_type": "a2a_agent",
-  "domain": "airline",
-  "pass_rate": 0.85,
-  "avg_task_time_s": 2.34,
-  "a2a_protocol_metrics": {
-    "total_requests": 15,
-    "total_tokens": 12450,
-    "total_latency_ms": 4567.89,
-    "avg_latency_ms": 304.53,
-    "error_count": 0,
-    "requests": [
-      {
-        "request_id": "req-uuid-1",
-        "endpoint": "http://localhost:8080",
-        "status_code": 200,
-        "latency_ms": 345.67,
-        "input_tokens": 523,
-        "output_tokens": 178,
-        "context_id": "ctx-abc123",
-        "timestamp": "2025-11-23T10:30:45.123Z"
-      }
-    ]
-  }
-}
++--------------+                      +--------------+
+|  tau2-bench  |                      |  A2A Agent   |
+|              |                      |  (Remote)    |
+| +----------+ |                      |              |
+| |Orchestr- | |  1. Discover Agent   |              |
+| |  ator    | +--------------------->|  Agent Card  |
+| +----+-----+ |                      |              |
+|      |       |  2. Send Message     |              |
+| +----v-----+ |     (user + tools)   |  +--------+  |
+| | A2AAgent | +--------------------->|  |Reasoning|  |
+| |          | |                      |  +----+---+  |
+| | +------+ | |  3. Tool Call Req    |       |      |
+| | |Trans-| | |<---------------------+   ToolCall   |
+| | |lator | | |                      |   Decision   |
+| | +------+ | |                      |              |
+| +----+-----+ |                      +--------------+
+|      |       |
+| +----v-----+ |
+| |Tool Exec-| |  4. Execute Locally
+| |  (Local) | |     (NOT on agent!)
+| +----+-----+ |
+|      |       |
+| +----v-----+ |  5. Send Tool Result
+| | A2AAgent | +--------------------->|
+| +----------+ |                      |
++--------------+                      +--------------+
 ```
 
 ---
@@ -372,43 +390,15 @@ tau2 run airline \
 tau2 run airline \
   --agent llm_agent \
   --agent-llm claude-3-5-sonnet-20241022 \
-  --output-dir results/llm-airline
+  --user-llm claude-3-haiku-20240307 \
+  --save-to results/llm-airline
 
 # Run A2A agent
 tau2 run airline \
   --agent a2a_agent \
   --agent-a2a-endpoint http://localhost:8080 \
-  --output-dir results/a2a-airline
-
-# Compare results
-python -m tau2.scripts.compare_results \
-  results/llm-airline/metrics.json \
-  results/a2a-airline/metrics.json
-```
-
-### Expected Comparison Output
-
-```
-Comparison: llm_agent vs a2a_agent
-==================================
-
-Pass Rate:
-  llm_agent:  87.5%
-  a2a_agent:  85.0%
-  Difference: -2.5%
-
-Avg Task Time:
-  llm_agent:  2.1s
-  a2a_agent:  2.3s
-  Overhead:   +9.5%
-
-Token Usage:
-  llm_agent:  11,200 tokens
-  a2a_agent:  12,450 tokens (+11.2%)
-
-Protocol Overhead:
-  a2a_agent:  304ms avg latency per request
-  Network:    ~4.5s total overhead (15 requests)
+  --user-llm claude-3-haiku-20240307 \
+  --save-to results/a2a-airline
 ```
 
 ---
@@ -434,7 +424,8 @@ curl http://localhost:8080/.well-known/agent-card.json
 tau2 run airline \
   --agent a2a_agent \
   --agent-a2a-endpoint https://agent.example.com \
-  --agent-a2a-auth-token YOUR_TOKEN_HERE
+  --agent-a2a-auth-token YOUR_TOKEN_HERE \
+  --user-llm claude-3-haiku-20240307
 ```
 
 ### Timeout Error
@@ -463,11 +454,14 @@ tau2 run airline \
 
 **Solution**: Verify task domain matches agent capabilities:
 ```bash
-# List available domains and their tools
-tau2 list domains
+# List available domains
+tau2 domain --list
 
 # Run correct domain
-tau2 run airline --agent a2a_agent --agent-a2a-endpoint http://localhost:8080
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8080 \
+  --user-llm claude-3-haiku-20240307
 ```
 
 ---
@@ -521,20 +515,49 @@ print(f"Total tokens: {metrics.total_tokens}")
 
 ---
 
+## FAQ
+
+### Q: Can I use A2A agents for all domains?
+**A**: Yes! A2A agents work with all tau2-bench domains (airline, retail, telecom, etc.). The agent receives tool descriptions via the message protocol.
+
+### Q: Do tools execute on the remote agent?
+**A**: No! Tools always execute locally in tau2-bench. The A2A agent only decides which tools to call (reasoning). This ensures evaluation reproducibility and security.
+
+### Q: Why do I need a user LLM for A2A agents?
+**A**: The user simulator runs independently of the agent. It simulates customer behavior in conversations. The `mock` domain is an exception - it's designed for quick validation and doesn't require user simulation.
+
+### Q: Can I run A2A agents offline?
+**A**: No, A2A requires network connectivity to the remote agent. For offline evaluation, use local LLM agents (`llm_agent`, `llm_solo_agent`).
+
+### Q: How do I estimate costs for A2A agents?
+**A**: Check `metrics.json` -> `a2a_protocol_metrics.total_tokens`. Multiply by your agent's pricing:
+```
+cost = (input_tokens * $input_price) + (output_tokens * $output_price)
+```
+
+### Q: Can I use multiple A2A agents in one evaluation?
+**A**: Not directly. Each benchmark run evaluates one agent. To compare multiple A2A agents, run separate evaluations and compare results.
+
+### Q: Does backward compatibility mean existing agents still work?
+**A**: Yes! All existing tau2-bench agents (LLM agents, gym agents) continue working unchanged. A2A is purely additive.
+
+---
+
 ## Next Steps
 
 ### 1. Read Implementation Details
 - [Data Model](data-model.md) - Entity definitions and relationships
 - [Research](research.md) - A2A protocol patterns and best practices
-- [Contracts](contracts/) - API specifications
+- [Local Test Architecture](testing/local-test-architecture.md) - Detailed architecture diagrams
+- [Domain Evaluation Guide](testing/local-test-eval-guide.md) - Full domain evaluation workflows
 
 ### 2. Explore Test Suite
 ```bash
 # Run A2A integration tests
 pytest tests/test_a2a/ -v
 
-# Run with coverage
-pytest tests/test_a2a/ --cov=tau2.a2a --cov-report=html
+# Run local agent tests
+pytest tests/test_local_eval/ -v
 ```
 
 ### 3. Implement Custom A2A Agent
@@ -547,34 +570,8 @@ See [A2A Protocol Documentation](https://a2a-protocol.org/latest/specification/)
 ### 4. Contribute
 
 Found a bug or want to improve A2A support?
-1. Open an issue: https://github.com/tau2-bench/tau2-bench/issues
+1. Open an issue: https://github.com/sierra-research/tau2-bench/issues
 2. Submit a PR: Follow CONTRIBUTING.md guidelines
-3. Join discussions: https://github.com/tau2-bench/tau2-bench/discussions
-
----
-
-## FAQ
-
-### Q: Can I use A2A agents for all domains?
-**A**: Yes! A2A agents work with all tau2-bench domains (airline, retail, telecom, etc.). The agent receives tool descriptions via the message protocol.
-
-### Q: Do tools execute on the remote agent?
-**A**: No! Tools always execute locally in tau2-bench. The A2A agent only decides which tools to call (reasoning). This ensures evaluation reproducibility and security.
-
-### Q: Can I run A2A agents offline?
-**A**: No, A2A requires network connectivity to the remote agent. For offline evaluation, use local LLM agents (`llm_agent`, `llm_solo_agent`).
-
-### Q: How do I estimate costs for A2A agents?
-**A**: Check `metrics.json` → `a2a_protocol_metrics.total_tokens`. Multiply by your agent's pricing:
-```
-cost = (input_tokens * $input_price) + (output_tokens * $output_price)
-```
-
-### Q: Can I use multiple A2A agents in one evaluation?
-**A**: Not directly in Phase 1. Each benchmark run evaluates one agent. To compare multiple A2A agents, run separate evaluations and compare results.
-
-### Q: Does backward compatibility mean existing agents still work?
-**A**: Yes! All existing tau2-bench agents (LLM agents, gym agents) continue working unchanged. A2A is purely additive.
 
 ---
 
@@ -582,15 +579,12 @@ cost = (input_tokens * $input_price) + (output_tokens * $output_price)
 
 ### Documentation
 - [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/)
-- [tau2-bench Documentation](https://github.com/tau2-bench/tau2-bench)
+- [tau2-bench Documentation](https://github.com/sierra-research/tau2-bench)
 - [Feature Specification](spec.md)
 
 ### Examples
-- [Mock A2A Agent Setup](contracts/README.md#mock-server-setup)
+- [Simple Nebius Agent](../../simple_nebius_agent/README.md) - Minimal ADK agent for local testing
 - [Integration Tests](../../tests/test_a2a/)
-- [Sample Agent Cards](contracts/agent-discovery.yaml#examples)
 
 ### Support
-- GitHub Issues: https://github.com/tau2-bench/tau2-bench/issues
-- Discussions: https://github.com/tau2-bench/tau2-bench/discussions
-- A2A Protocol Discord: https://discord.gg/a2a-protocol
+- GitHub Issues: https://github.com/sierra-research/tau2-bench/issues

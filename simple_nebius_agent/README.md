@@ -32,17 +32,17 @@ This agent provides a simple example of:
 # Set your API key
 export NEBIUS_API_KEY="your-api-key-here"
 
-# Start the agent on port 8001
-adk web --a2a simple_nebius_agent/ --port 8001
+# Start the agent on port 8001 (from project root)
+adk api_server --a2a . --port 8001
 ```
 
-The agent will be available at `http://localhost:8001`
+The agent will be available at `http://localhost:8001/a2a/simple_nebius_agent`
 
 ### 2. Verify Agent is Running
 
 Check the agent card:
 ```bash
-curl http://localhost:8001/.well-known/agent-card.json
+curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq
 ```
 
 Expected response:
@@ -50,7 +50,8 @@ Expected response:
 {
   "name": "simple_nebius_agent",
   "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
-  "url": "http://localhost:8001",
+  "url": "http://localhost:8001/a2a/simple_nebius_agent",
+  "version": "1.0.0",
   "capabilities": {
     "streaming": false
   }
@@ -59,13 +60,22 @@ Expected response:
 
 ### 3. Test with tau2-bench
 
-Run a simple evaluation:
+Run a simple evaluation (mock domain):
 ```bash
-python -m tau2.run \
-  --agent-type a2a \
-  --agent-endpoint http://localhost:8001 \
-  --domain mock \
+tau2 run mock \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
   --num-trials 1
+```
+
+For real domains (requires user simulator):
+```bash
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --user-llm claude-3-haiku-20240307 \
+  --num-trials 1 \
+  --num-tasks 5
 ```
 
 ## Configuration
@@ -105,7 +115,7 @@ By default, this agent runs on port 8001 to avoid conflicts with:
 
 To use a different port:
 ```bash
-adk web --a2a simple_nebius_agent/ --port 8002
+adk api_server --a2a . --port 8002
 ```
 
 ## Testing
@@ -114,18 +124,23 @@ adk web --a2a simple_nebius_agent/ --port 8002
 
 1. **Test Agent Discovery**:
    ```bash
-   curl http://localhost:8001/.well-known/agent-card.json | jq
+   curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq
    ```
 
 2. **Test Message Sending** (using A2A protocol):
    ```bash
-   curl -X POST http://localhost:8001/message/send \
+   curl -X POST http://localhost:8001/a2a/simple_nebius_agent \
      -H "Content-Type: application/json" \
      -d '{
-       "message": {
-         "messageId": "test-123",
-         "role": "user",
-         "parts": [{"text": "Hello, how are you?"}]
+       "jsonrpc": "2.0",
+       "method": "message/send",
+       "id": "test-123",
+       "params": {
+         "message": {
+           "messageId": "msg-123",
+           "role": "user",
+           "parts": [{"kind": "text", "text": "Hello, how are you?"}]
+         }
        }
      }'
    ```
@@ -134,11 +149,11 @@ adk web --a2a simple_nebius_agent/ --port 8002
 
 Run the automated test suite:
 ```bash
-# Run simple local tests
-pytest tests/test_simple_local/ -v
+# Run local evaluation tests
+pytest tests/test_local_eval/ -v
 
 # Run with detailed logging
-pytest tests/test_simple_local/ -v -s --log-cli-level=DEBUG
+pytest tests/test_local_eval/ -v -s --log-cli-level=DEBUG
 ```
 
 Or use the convenience script:
@@ -149,34 +164,34 @@ Or use the convenience script:
 ## Architecture
 
 ```
-┌────────────────────────────────────────────┐
-│  Simple Nebius Agent (localhost:8001)      │
-│                                            │
-│  ┌──────────────────────────────────────┐ │
-│  │  A2A HTTP Server                     │ │
-│  │  (adk web --a2a)                     │ │
-│  └──────────────┬───────────────────────┘ │
-│                 │                          │
-│  ┌──────────────▼───────────────────────┐ │
-│  │  LlmAgent (ADK)                      │ │
-│  │  - Name: simple_nebius_agent         │ │
-│  │  - No tools (conversation only)      │ │
-│  └──────────────┬───────────────────────┘ │
-│                 │                          │
-│  ┌──────────────▼───────────────────────┐ │
-│  │  LiteLlm Wrapper                     │ │
-│  │  - Model: Llama 3.1 8B               │ │
-│  │  - API: Nebius                       │ │
-│  └──────────────────────────────────────┘ │
-└────────────────────────────────────────────┘
-                  │
-                  │ HTTP Request
-                  ▼
-       ┌──────────────────────┐
-       │  Nebius API          │
-       │  meta-llama/         │
-       │  Meta-Llama-3.1-8B   │
-       └──────────────────────┘
++--------------------------------------------+
+|  Simple Nebius Agent (localhost:8001)      |
+|                                            |
+|  +--------------------------------------+  |
+|  |  A2A HTTP Server                     |  |
+|  |  (adk api_server --a2a)              |  |
+|  +------------------+-------------------+  |
+|                     |                      |
+|  +------------------v-------------------+  |
+|  |  LlmAgent (ADK)                      |  |
+|  |  - Name: simple_nebius_agent         |  |
+|  |  - No tools (conversation only)      |  |
+|  +------------------+-------------------+  |
+|                     |                      |
+|  +------------------v-------------------+  |
+|  |  LiteLlm Wrapper                     |  |
+|  |  - Model: Llama 3.1 8B               |  |
+|  |  - API: Nebius                       |  |
+|  +--------------------------------------+  |
++--------------------------------------------+
+                     |
+                     | HTTP Request
+                     v
+       +------------------------+
+       |  Nebius API            |
+       |  meta-llama/           |
+       |  Meta-Llama-3.1-8B     |
+       +------------------------+
 ```
 
 ## Comparison with Full tau2_eval_agent
@@ -213,7 +228,7 @@ kill <PID>
 
 Or use a different port:
 ```bash
-adk web --a2a simple_nebius_agent/ --port 8002
+adk api_server --a2a . --port 8002
 ```
 
 ### Agent Not Responding
@@ -221,7 +236,7 @@ adk web --a2a simple_nebius_agent/ --port 8002
 **Check 1**: Wait for startup (5-10 seconds)
 ```bash
 # Health check
-curl http://localhost:8001/.well-known/agent-card.json
+curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json
 ```
 
 **Check 2**: Verify API key is valid

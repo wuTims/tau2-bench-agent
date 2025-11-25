@@ -413,135 +413,51 @@ For local or remote agent evaluation, see our [agent developer guide](src/tau2/a
 
 ## A2A Protocol Integration
 
-τ²-bench now supports the [Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/), enabling evaluation of remote agents via standardized communication.
+τ²-bench supports the [Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/) for evaluating remote agents via standardized communication.
 
-### Understanding the Architecture
+### Quick Start
 
-τ²-bench has **two independent LLM configurations**:
-
-```
-┌─────────────────────────────────────────────┐
-│  Agent (what you're testing)                │
-├─────────────────────────────────────────────┤
-│  --agent llm_agent                          │
-│    └─> --agent-llm <model>                  │  ← Local LLM
-│                                             │
-│  --agent a2a_agent                          │
-│    └─> --agent-a2a-endpoint <url>           │  ← Remote A2A agent
-└─────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────┐
-│  User Simulator (always runs locally)       │
-├─────────────────────────────────────────────┤
-│  --user-llm <model>                         │  ← Independent of agent type
-└─────────────────────────────────────────────┘
-```
-
-**Key Point:** When using `a2a_agent`, your remote agent handles reasoning while τ²-bench still runs the user simulator locally using `--user-llm`. This means you always need to configure a user LLM, regardless of agent type.
-
-### Quick Start Examples
-
-#### Basic A2A Evaluation (Recommended)
 ```bash
-# Evaluate remote A2A agent with Claude Haiku user simulator
+# Evaluate a remote A2A agent
 tau2 run airline \
   --agent a2a_agent \
   --agent-a2a-endpoint https://your-agent.example.com \
   --user-llm claude-3-haiku-20240307
 ```
 
-#### With Authentication
-```bash
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --agent-a2a-auth-token YOUR_TOKEN_HERE \
-  --user-llm claude-3-haiku-20240307
-```
+### Local Testing with Nebius
 
-#### Configure Timeout for Slow Agents
-```bash
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --agent-a2a-timeout 600 \  # 10 minutes
-  --user-llm claude-3-haiku-20240307
-```
-
-#### Alternative User LLM Options
-```bash
-# Use Nebius Llama for cost-effective user simulation
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm openai/meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --user-llm-args '{"api_base": "'"$NEBIUS_API_BASE"'", "api_key": "'"$NEBIUS_API_KEY"'"}'
-
-# Use Claude Sonnet for more sophisticated user behavior
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm claude-3-5-sonnet-20241022
-```
-
-### Choosing Your User LLM
-
-| Model | Cost | Best For |
-|-------|------|----------|
-| `claude-3-haiku-20240307` | $ | ✅ **Recommended**: Reliable, cost-effective baseline |
-| `openai/meta-llama/Meta-Llama-3.1-8B-Instruct` | $ | Cost-effective alternative (requires Nebius setup) |
-| `claude-3-5-sonnet-20241022` | $$$ | More sophisticated user behavior testing |
-
-> **💡 Tip**: Start with `claude-3-haiku-20240307` for consistent, reliable user simulation at a reasonable cost.
-
-### A2A Configuration Options
-
-| Argument | Required | Purpose | Example |
-|----------|----------|---------|---------|
-| `--agent a2a_agent` | Yes | Enable A2A agent | - |
-| `--agent-a2a-endpoint` | Yes | Remote agent URL | `https://your-agent.example.com` |
-| `--user-llm` | Yes | User simulator model | `claude-3-haiku-20240307` |
-| `--agent-a2a-auth-token` | No | Bearer token for auth | `YOUR_TOKEN_HERE` |
-| `--agent-a2a-timeout` | No | Request timeout (seconds) | `600` (default: 300) |
-| `--a2a-debug` | No | Enable debug logging | (flag) |
-
-### Key Features
-
-- **Protocol Compliance**: Full A2A protocol support with agent discovery, message translation, and session management
-- **Local Tool Execution**: Tools execute locally in τ²-bench (remote agent only provides reasoning)
-- **Flexible User Simulation**: Choose any LLM provider for user behavior independent of your A2A agent
-- **Protocol Metrics**: Track token usage, latency, and overhead for A2A interactions
-- **Backward Compatible**: Existing agents and workflows continue to work unchanged
-- **Debug Support**: Enable detailed A2A logging with `--a2a-debug` flag
-
-### Complete Example: Full Evaluation
+Test A2A integration locally using the included Nebius agent:
 
 ```bash
-# Run complete evaluation on all domains with A2A agent
-tau2 run retail \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm claude-3-haiku-20240307 \
-  --num-trials 4
+# 1. Set your Nebius API key (get one at https://tokenfactory.nebius.com/)
+export NEBIUS_API_KEY="your-api-key-here"
 
-tau2 run airline \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm claude-3-haiku-20240307 \
-  --num-trials 4
+# 2. Quick validation (mock domain)
+./specs/001-a2a-integration/scripts/test_simple_agent.sh
 
-tau2 run telecom \
-  --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm claude-3-haiku-20240307 \
-  --num-trials 4
+# 3. Full domain evaluation (with user simulator)
+./specs/001-a2a-integration/scripts/eval_domain.sh airline 1 5
 ```
+
+### Key Concepts
+
+| Argument | Purpose | Example |
+|----------|---------|---------|
+| `--agent a2a_agent` | Enable A2A agent | - |
+| `--agent-a2a-endpoint` | Remote agent URL | `https://your-agent.example.com` |
+| `--user-llm` | User simulator model | `claude-3-haiku-20240307` |
+| `--agent-a2a-auth-token` | Bearer token (optional) | `YOUR_TOKEN_HERE` |
+| `--agent-a2a-timeout` | Request timeout (optional) | `600` (default: 300) |
+
+**Key Points:**
+- Tools execute locally in τ²-bench (remote agent only provides reasoning)
+- User simulator (`--user-llm`) runs independently of the agent type
+- Existing agents and workflows continue to work unchanged
 
 ### Learn More
 
-- [A2A Quickstart Guide](specs/001-a2a-integration/quickstart.md) - Complete A2A integration tutorial with examples and troubleshooting
-- [A2A Data Model](specs/001-a2a-integration/data-model.md) - Entity definitions and message formats
-- [A2A Protocol Specification](https://a2a-protocol.org/latest/specification/) - Official A2A protocol documentation
+**[→ A2A Quickstart Guide](specs/001-a2a-integration/quickstart.md)** - Complete tutorial with local testing, API setup, troubleshooting, and advanced usage
 
 ## Contributing
 

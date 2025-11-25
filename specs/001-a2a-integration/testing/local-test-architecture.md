@@ -157,10 +157,9 @@ export NEBIUS_API_BASE="https://api.tokenfactory.nebius.com/v1/"  # Optional
 ./specs/001-a2a-integration/scripts/run_simple_agent.sh
 
 # 3. In another terminal, run the evaluation
-python -m tau2.run \
-  --agent-type a2a \
-  --agent-endpoint http://localhost:8001 \
-  --domain mock \
+tau2 run mock \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
   --num-trials 1
 
 # 4. Stop the agent (Ctrl+C in first terminal)
@@ -170,10 +169,10 @@ python -m tau2.run \
 
 ```bash
 # Run with pytest (automated lifecycle management)
-pytest tests/test_simple_local/ -v
+pytest tests/test_local_eval/ -v
 
 # Run with detailed logging
-pytest tests/test_simple_local/ -v -s --log-cli-level=DEBUG
+pytest tests/test_local_eval/ -v -s --log-cli-level=DEBUG
 ```
 
 ## Testing Workflow
@@ -193,8 +192,8 @@ pytest tests/test_simple_local/ -v -s --log-cli-level=DEBUG
    - Check logs for errors
 
 2. **Evaluation Failing**:
-   - Verify agent is accessible: `curl http://localhost:8001/.well-known/agent-card.json`
-   - Check tau2-bench logs: `--log-level DEBUG`
+   - Verify agent is accessible: `curl http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json`
+   - Check tau2-bench logs: `--a2a-debug`
    - Validate Nebius API is responding
 
 3. **Unexpected Results**:
@@ -221,18 +220,18 @@ To create your own test agent:
 To test with different tau2-bench domains:
 
 ```bash
-# Airline domain
-python -m tau2.run \
-  --agent-type a2a \
-  --agent-endpoint http://localhost:8001 \
-  --domain airline \
+# Airline domain (requires user LLM)
+tau2 run airline \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --user-llm claude-3-haiku-20240307 \
   --num-trials 3
 
-# Retail domain
-python -m tau2.run \
-  --agent-type a2a \
-  --agent-endpoint http://localhost:8001 \
-  --domain retail \
+# Retail domain (requires user LLM)
+tau2 run retail \
+  --agent a2a_agent \
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --user-llm claude-3-haiku-20240307 \
   --num-trials 3
 ```
 
