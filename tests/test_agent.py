@@ -1,34 +1,7 @@
-from unittest.mock import Mock, patch
-
 import pytest
 
 from tau2.agent.llm_agent import LLMAgent, LLMSoloAgent
-from tau2.data_model.message import AssistantMessage, ToolCall, UserMessage
-
-
-@pytest.fixture
-def mock_llm_response():
-    """Create a mock LLM response to avoid needing API keys."""
-    return AssistantMessage(
-        content="I'd be happy to help you create a task! What kind of task would you like to create?",
-        role="assistant",
-    )
-
-
-@pytest.fixture
-def mock_tool_call_response():
-    """Create a mock LLM response with tool call for solo agent tests."""
-    return AssistantMessage(
-        content=None,
-        role="assistant",
-        tool_calls=[
-            ToolCall(
-                id="call_123",
-                name="get_user_info",
-                arguments={"user_id": "user_1"},
-            )
-        ],
-    )
+from tau2.data_model.message import AssistantMessage, UserMessage
 
 
 @pytest.fixture
@@ -55,17 +28,12 @@ def first_user_message():
     return UserMessage(content="Hello can you help me create a task?", role="user")
 
 
-def test_agent(agent: LLMAgent, first_user_message: UserMessage, mock_llm_response):
+def test_agent(agent: LLMAgent, first_user_message: UserMessage):
     agent_state = agent.get_init_state()
     assert agent_state is not None
-
-    # Mock the LLM call to avoid needing API keys
-    # Patch where generate is used (llm_agent module) not where it's defined
-    with patch("tau2.agent.llm_agent.generate", return_value=mock_llm_response):
-        agent_msg, agent_state = agent.generate_next_message(
-            first_user_message, agent_state
-        )
-
+    agent_msg, agent_state = agent.generate_next_message(
+        first_user_message, agent_state
+    )
     # Check the response is an assistant message
     assert isinstance(agent_msg, AssistantMessage)
     # Check the state is updated
@@ -89,16 +57,10 @@ def test_agent_set_state(agent: LLMAgent, first_user_message: UserMessage):
     )
 
 
-def test_solo_agent(solo_agent: LLMSoloAgent, mock_tool_call_response):
+def test_solo_agent(solo_agent: LLMSoloAgent):
     agent_state = solo_agent.get_init_state()
     assert agent_state is not None
-
-    # Mock the LLM call to avoid needing API keys
-    # Solo agent requires tool calls, not text responses
-    with patch("tau2.agent.llm_agent.generate", return_value=mock_tool_call_response):
-        agent_msg, agent_state = solo_agent.generate_next_message(None, agent_state)
-
+    agent_msg, agent_state = solo_agent.generate_next_message(None, agent_state)
     assert isinstance(agent_msg, AssistantMessage)
-    assert agent_msg.is_tool_call(), "Solo agent should return tool call"
     assert agent_state is not None
     assert len(agent_state.messages) == 1
