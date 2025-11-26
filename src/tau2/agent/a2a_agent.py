@@ -87,30 +87,14 @@ class A2AAgent(LocalAgent):
         state: A2AAgentState,
     ) -> tuple[AssistantMessage, A2AAgentState]:
         """
-        Generate the next message by communicating with remote A2A agent.
-
-        Flow:
-        1. Translate tau2 message to A2A format (include tools for user messages)
-        2. Send message to A2A agent via HTTP
-        3. Parse A2A response to tau2 AssistantMessage
-        4. Update state (context_id, request_count, conversation history)
-
-        Args:
-            message: User message or tool result message
-            state: Current agent state
-
+        Produce the next assistant message by sending the provided input to the remote A2A agent and update the agent state.
+        
+        Parameters:
+            message: The incoming user or tool-result message to deliver to the remote agent.
+            state: The current A2AAgentState (context, conversation history, request count).
+        
         Returns:
-            Tuple of (AssistantMessage, updated_state)
-
-        Raises:
-            A2AError: If communication with A2A agent fails
-
-        Note on async/sync bridge:
-            This method is synchronous (required by tau2's BaseAgent interface)
-            but uses httpx AsyncClient for HTTP requests. The bridge pattern
-            (asyncio.run + fallback to new_event_loop) handles nested event
-            loop contexts. Performance impact is minimal for single-request
-            scenarios but may add overhead in high-frequency async contexts.
+            A tuple of (AssistantMessage, A2AAgentState) where the AssistantMessage is the agent's reply and the A2AAgentState is the updated state with a possibly new context_id, extended conversation history, and incremented request_count.
         """
         import asyncio
 
@@ -118,6 +102,14 @@ class A2AAgent(LocalAgent):
         async def _async_generate():
             # Translate tau2 message to A2A content
             # Include tools for user messages so agent knows what's available
+            """
+            Send the current tau2 message to the remote A2A agent and return the produced assistant message along with an updated A2AAgentState.
+            
+            The function translates the provided tau2 message into A2A format (including available tools for user messages), sends it to the remote agent via the internal A2A client, translates the agent's A2A response into a tau2 AssistantMessage, and constructs a new state that appends the turn to the conversation history, preserves or updates the context_id returned by the agent, and increments the request count.
+            
+            Returns:
+                tuple[AssistantMessage, A2AAgentState]: The assistant message generated from the A2A response and the updated agent state.
+            """
             tools_for_translation = self.tools if message.role == "user" else None
             a2a_content = tau2_to_a2a_message_content(message, tools=tools_for_translation)
 
@@ -214,11 +206,13 @@ class A2AAgent(LocalAgent):
         state: A2AAgentState | None = None,
     ) -> None:
         """
-        Stop the agent and clean up resources.
-
-        Args:
-            message: The last message to the agent (ignored)
-            state: The agent last state (ignored)
+        Stop the agent and release its resources.
+        
+        Closes the agent's internal HTTP client by running its asynchronous close routine; the implementation will create or reuse an event loop as needed to perform the shutdown.
+        
+        Parameters:
+            message (ValidAgentInputMessage | None): Ignored; present for interface compatibility.
+            state (A2AAgentState | None): Ignored; present for interface compatibility.
         """
         import asyncio
 

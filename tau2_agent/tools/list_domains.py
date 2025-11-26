@@ -31,7 +31,13 @@ class ListDomains(BaseTool):
     )
 
     def _get_declaration(self) -> types.FunctionDeclaration | None:
-        """Generate the function declaration for this tool."""
+        """
+        Create a FunctionDeclaration describing this tool for integration with GenAI tooling.
+        
+        Returns:
+            types.FunctionDeclaration | None: A FunctionDeclaration populated with the tool's name, description,
+            and an empty object schema for parameters; `None` if no declaration is provided.
+        """
         return types.FunctionDeclaration(
             name=self.name,
             description=self.description,
@@ -44,7 +50,18 @@ class ListDomains(BaseTool):
     async def run_async(
         self, *, _args: dict[str, Any], _tool_context: ToolContext
     ) -> Any:
-        """Run the tool using tau2's registry."""
+        """
+        Discover available tau2-bench evaluation domains and return metadata for each domain.
+        
+        Parameters:
+            _args (dict[str, Any]): Ignored; reserved for tool invocation parameters.
+        
+        Returns:
+            dict: A mapping with key "domains" to a list of domain info objects. Each domain info object contains:
+                - name (str): Domain identifier.
+                - description (str): Human-readable description (from DOMAIN_DESCRIPTIONS or "<domain> domain" fallback).
+                - num_tasks (int | None): Number of tasks in the domain, or `None` if tasks could not be loaded (load failures are logged).
+        """
         from tau2.registry import registry
         from tau2.run import load_tasks
 

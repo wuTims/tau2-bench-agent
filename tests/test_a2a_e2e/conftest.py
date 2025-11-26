@@ -33,12 +33,12 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 def find_available_agent() -> str | None:
     """
-    Find an available ADK agent directory in the project.
-
-    Looks for directories containing agent.py files that can be served.
-
+    Find the first project directory that appears to be a runnable ADK agent.
+    
+    Checks a preferred candidate ("simple_nebius_agent") first, then scans PROJECT_ROOT for any directory that contains both `agent.py` and `__init__.py`.
+    
     Returns:
-        str: Name of the first valid agent directory, or None if not found
+        The name of the first directory that looks like a valid agent, or `None` if no such directory is found.
     """
     # Priority list of agent directories to check
     # Note: tau2_agent is the evaluator, not a target agent for evaluation
@@ -341,13 +341,32 @@ def mock_evaluation_agent_endpoint(adk_server):
 @pytest_asyncio.fixture
 async def wait_for_async():
     """
-    Helper fixture for waiting on async operations in tests.
-
-    Provides utilities for async test operations.
+    Provide a helper that awaits a coroutine with a timeout and fails the test on timeout.
+    
+    Intended for use in async tests; returns a callable that awaits the given coroutine up to `timeout` seconds.
+    
+    Parameters:
+        coro (Awaitable): The coroutine or awaitable to run.
+        timeout (float): Maximum seconds to wait before failing the test (default 30).
+    
+    Returns:
+        The value produced by awaiting `coro`. If the timeout is reached, the test is failed via `pytest.fail`.
     """
 
     async def wait_with_timeout(coro, timeout=30):
-        """Wait for coroutine with timeout."""
+        """
+        Await a coroutine and fail the test if it does not complete within the given timeout.
+        
+        Parameters:
+            coro (Awaitable): The coroutine or awaitable to run.
+            timeout (float): Maximum seconds to wait for completion (default 30).
+        
+        Returns:
+            The result produced by the awaited coroutine.
+        
+        Raises:
+            pytest.fail: Fails the current test if the operation times out.
+        """
         try:
             return await asyncio.wait_for(coro, timeout=timeout)
         except asyncio.TimeoutError:
