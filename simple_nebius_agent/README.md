@@ -1,6 +1,6 @@
 # Simple Nebius Agent
 
-A minimal ADK agent that wraps the Nebius Llama 3.1 8B API for local A2A protocol testing.
+A minimal ADK agent that wraps the Nebius Qwen3-30B API for local A2A protocol testing.
 
 ## Purpose
 
@@ -49,7 +49,7 @@ Expected response:
 ```json
 {
   "name": "simple_nebius_agent",
-  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
+  "description": "A simple agent using Nebius Qwen3-30B for testing A2A protocol",
   "url": "http://localhost:8001/a2a/simple_nebius_agent",
   "version": "1.0.0",
   "capabilities": {
@@ -180,7 +180,7 @@ Or use the convenience script:
 |                     |                      |
 |  +------------------v-------------------+  |
 |  |  LiteLlm Wrapper                     |  |
-|  |  - Model: Llama 3.1 8B               |  |
+|  |  - Model: Qwen3-30B                  |  |
 |  |  - API: Nebius                       |  |
 |  +--------------------------------------+  |
 +--------------------------------------------+
@@ -189,8 +189,8 @@ Or use the convenience script:
                      v
        +------------------------+
        |  Nebius API            |
-       |  meta-llama/           |
-       |  Meta-Llama-3.1-8B     |
+       |  Qwen/                 |
+       |  Qwen3-30B-A3B         |
        +------------------------+
 ```
 
@@ -202,7 +202,7 @@ Or use the convenience script:
 | Complexity | ~50 lines | 500+ lines |
 | Tools | None | 3 tools |
 | Port | 8001 | 8000 |
-| Model | Nebius Llama 3.1 8B | Gemini 2.0 Flash |
+| Model | Nebius Qwen3-30B | Gemini 2.0 Flash |
 | Use Case | Quick local testing | Remote evaluation |
 
 ## Troubleshooting
@@ -257,7 +257,7 @@ pip install -e .
 
 ## Cost Considerations
 
-- **Model**: meta-llama/Meta-Llama-3.1-8B-Instruct
+- **Model**: Qwen/Qwen3-30B-A3B-Thinking-2507
 - **Provider**: Nebius
 - **Estimated Cost**: ~$0.20 per 1M tokens
 - **Typical Evaluation**: ~$0.001 per task (mock domain)

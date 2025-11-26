@@ -1,7 +1,7 @@
 {
   "name": "simple_nebius_agent",
   "url": "http://localhost:8001/a2a/simple_nebius_agent",
-  "description": "A simple agent using Nebius Llama 3.1 8B for testing A2A protocol",
+  "description": "A simple agent using Nebius Qwen3-30B for testing A2A protocol",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false
