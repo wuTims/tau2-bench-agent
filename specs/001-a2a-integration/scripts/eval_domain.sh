@@ -153,9 +153,9 @@ fi
 
 # Determine user LLM model
 # Use Nebius model for user simulator (uses NEBIUS_API_KEY)
-USER_LLM="openai/openai/gpt-oss-120b"
+USER_LLM="openai/Qwen/Qwen3-30B-A3B-Thinking-2507"
 USER_LLM_ARGS='{"base_url": "https://api.tokenfactory.nebius.com/v1/", "api_key": "'"$NEBIUS_API_KEY"'"}'
-echo -e "${GREEN}✓${NC} Using Nebius gpt-oss-120b for user simulator"
+echo -e "${GREEN}✓${NC} Using Nebius Qwen3-30B-A3B-Thinking-2507 for user simulator"
 
 # Build tau2 command
 LOG_LEVEL="${LOG_LEVEL:-INFO}"

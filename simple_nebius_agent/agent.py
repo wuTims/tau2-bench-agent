@@ -1,5 +1,5 @@
 """
-Simple ADK agent that wraps Nebius Llama 3.1 8B API.
+Simple ADK agent that wraps Nebius Qwen3-30B API.
 
 This is a minimal example for local testing of A2A protocol integration.
 """
@@ -11,7 +11,7 @@ from google.adk.models.lite_llm import LiteLlm
 
 def create_agent() -> LlmAgent:
     """
-    Create a simple ADK agent configured with Nebius Llama 3.1 8B.
+    Create a simple ADK agent configured with Nebius Qwen3-30B.
 
     Returns:
         LlmAgent configured to use Nebius API
@@ -30,7 +30,7 @@ def create_agent() -> LlmAgent:
 
     # Create LiteLlm wrapper for Nebius API (OpenAI-compatible)
     llm_model = LiteLlm(
-        model="openai/meta-llama/Meta-Llama-3.1-8B-Instruct",
+        model="nebius/Qwen/Qwen3-30B-A3B-Thinking-2507",
         api_base=api_base,
         api_key=nebius_key,
     )
@@ -56,11 +56,11 @@ Rules:
 
 Always respond with either a tool call JSON or a helpful text message - never leave your response empty."""
 
-    # Create agent with Nebius Llama configuration
+    # Create agent with Nebius Qwen configuration
     agent = LlmAgent(
         model=llm_model,
         name="simple_nebius_agent",
-        description="A customer service agent using Nebius Llama 3.1 8B for tau2-bench evaluation",
+        description="A customer service agent using Nebius Qwen3-30B for tau2-bench evaluation",
         instruction=instruction,
     )
 

@@ -8,8 +8,8 @@ All tests are marked with @pytest.mark.a2a_e2e and are NOT run by default.
 Run explicitly with: pytest -m a2a_e2e
 """
 
-import pytest
 import httpx
+import pytest
 
 # Mark all tests in this module as E2E tests
 pytestmark = pytest.mark.a2a_e2e
@@ -60,7 +60,9 @@ async def test_e2e_agent_card_discovery(adk_server):
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
         response = await client.get(f"{adk_server}/.well-known/agent-card.json")
 
-        assert response.status_code == 200, f"Agent card not found: {response.status_code}"
+        assert response.status_code == 200, (
+            f"Agent card not found: {response.status_code}"
+        )
         agent_card = response.json()
 
         # Verify required agent card fields per A2A spec

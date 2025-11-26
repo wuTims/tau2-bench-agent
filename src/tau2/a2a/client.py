@@ -1,5 +1,6 @@
 """A2A HTTP client for communicating with remote A2A agents."""
 
+import contextlib
 import json
 import time
 import uuid
@@ -44,18 +45,37 @@ class A2AClient:
         self._owned_client = http_client is None
         self._metrics: list[ProtocolMetrics] = []
 
-    async def _get_http_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
-        if self._http_client is None:
-            # Create new client with config settings
-            self._http_client = httpx.AsyncClient(
-                base_url=self.config.endpoint,
-                timeout=httpx.Timeout(self.config.timeout),
-                verify=self.config.verify_ssl,
-                headers=self._build_headers(),
-                follow_redirects=True,
-            )
-        return self._http_client
+    def _create_http_client(self) -> httpx.AsyncClient:
+        """Create a new HTTP client with configured settings."""
+        return httpx.AsyncClient(
+            timeout=httpx.Timeout(self.config.timeout),
+            verify=self.config.verify_ssl,
+            headers=self._build_headers(),
+            follow_redirects=True,
+        )
+
+    @contextlib.asynccontextmanager
+    async def _http_client_context(self):
+        """Context manager for HTTP client.
+
+        When an external client was provided (for testing), reuses it.
+        Otherwise, creates a fresh client per request to avoid event loop issues.
+        See: https://github.com/encode/httpx/discussions/2489
+        """
+        if self._http_client is not None:
+            # External client provided - reuse it (caller manages lifecycle)
+            yield self._http_client
+        else:
+            # Create fresh client for this request
+            async with self._create_http_client() as client:
+                yield client
+
+    def _get_url(self, path: str = "") -> str:
+        """Build full URL from endpoint and path, ensuring no trailing slash issues."""
+        endpoint = self.config.endpoint.rstrip("/")
+        if path:
+            return f"{endpoint}/{path.lstrip('/')}"
+        return endpoint
 
     def _build_headers(self) -> dict[str, str]:
         """Build HTTP headers including authentication."""
@@ -87,31 +107,34 @@ class A2AClient:
             return self._agent_card
 
         try:
-            client = await self._get_http_client()
+            async with self._http_client_context() as client:
+                logger.debug(
+                    "Discovering A2A agent",
+                    endpoint=self.config.endpoint,
+                )
 
-            logger.debug(
-                "Discovering A2A agent",
-                endpoint=self.config.endpoint,
-            )
-
-            # Fetch agent card
-            response = await client.get(
-                "/.well-known/agent-card.json", headers=self._build_headers()
-            )
+                # Fetch agent card
+                response = await client.get(
+                    self._get_url(".well-known/agent-card.json"),
+                    headers=self._build_headers(),
+                )
 
             # Handle errors
             if response.status_code == 401:
-                raise A2AAuthError("Agent discovery requires authentication")
+                msg = "Agent discovery requires authentication"
+                raise A2AAuthError(msg)
 
             if response.status_code == 404:
+                msg = "Agent card not found at /.well-known/agent-card.json"
                 raise A2ADiscoveryError(
-                    "Agent card not found at /.well-known/agent-card.json",
+                    msg,
                     endpoint=self.config.endpoint,
                 )
 
             if response.status_code >= 400:
+                msg = f"Agent discovery failed with status {response.status_code}"
                 raise A2ADiscoveryError(
-                    f"Agent discovery failed with status {response.status_code}",
+                    msg,
                     endpoint=self.config.endpoint,
                 )
 
@@ -121,8 +144,9 @@ class A2AClient:
                 agent_card = AgentCard(**agent_card_data)
             except (json.JSONDecodeError, ValueError) as e:
                 logger.error("Failed to parse agent card", error=str(e))
+                msg = f"Invalid agent card format: {e}"
                 raise A2ADiscoveryError(
-                    f"Invalid agent card format: {e}",
+                    msg,
                     endpoint=self.config.endpoint,
                 ) from e
 
@@ -140,8 +164,9 @@ class A2AClient:
 
         except httpx.TimeoutException as e:
             logger.error("Agent discovery timed out", endpoint=self.config.endpoint)
+            msg = "Agent discovery timed out"
             raise A2ATimeoutError(
-                "Agent discovery timed out",
+                msg,
                 timeout=self.config.timeout,
             ) from e
 
@@ -151,8 +176,9 @@ class A2AClient:
                 endpoint=self.config.endpoint,
                 error=str(e),
             )
+            msg = f"Agent discovery failed: {e}"
             raise A2ADiscoveryError(
-                f"Agent discovery failed: {e}",
+                msg,
                 endpoint=self.config.endpoint,
             ) from e
 
@@ -193,52 +219,53 @@ class A2AClient:
         response_content = ""
 
         try:
-            client = await self._get_http_client()
+            async with self._http_client_context() as client:
+                # Build JSON-RPC request
+                rpc_request = {
+                    "jsonrpc": "2.0",
+                    "id": str(uuid.uuid4()),
+                    "method": "message/send",
+                    "params": {
+                        "message": {
+                            "messageId": str(uuid.uuid4()),
+                            "role": "user",
+                            "parts": [{"text": message_content}],
+                            "contextId": context_id,
+                        }
+                    },
+                }
 
-            # Build JSON-RPC request
-            rpc_request = {
-                "jsonrpc": "2.0",
-                "id": str(uuid.uuid4()),
-                "method": "message/send",
-                "params": {
-                    "message": {
-                        "messageId": str(uuid.uuid4()),
-                        "role": "user",
-                        "parts": [{"text": message_content}],
-                        "contextId": context_id,
-                    }
-                },
-            }
+                logger.debug(
+                    "Sending A2A message",
+                    endpoint=self.config.endpoint,
+                    context_id=context_id,
+                    message_length=len(message_content),
+                    input_tokens=input_tokens,
+                )
 
-            logger.debug(
-                "Sending A2A message",
-                endpoint=self.config.endpoint,
-                context_id=context_id,
-                message_length=len(message_content),
-                input_tokens=input_tokens,
-            )
+                # Debug: Log full request payload (only at debug level)
+                logger.trace(
+                    "A2A request payload",
+                    request_id=request_id,
+                    payload=rpc_request,
+                )
 
-            # Debug: Log full request payload (only at debug level)
-            logger.trace(
-                "A2A request payload",
-                request_id=request_id,
-                payload=rpc_request,
-            )
-
-            # Send request
-            response = await client.post(
-                "/", json=rpc_request, headers=self._build_headers()
-            )
+                # Send request
+                response = await client.post(
+                    self._get_url(), json=rpc_request, headers=self._build_headers()
+                )
 
             status_code = response.status_code
 
             # Handle HTTP errors
             if response.status_code == 401:
-                raise A2AAuthError("Authentication failed")
+                msg = "Authentication failed"
+                raise A2AAuthError(msg)
 
             if response.status_code == 408:
+                msg = "Agent response timeout"
                 raise A2ATimeoutError(
-                    "Agent response timeout",
+                    msg,
                     timeout=self.config.timeout,
                 )
 
@@ -283,8 +310,9 @@ class A2AClient:
                 # Check for JSON-RPC error
                 if "error" in rpc_response:
                     error_info = rpc_response["error"]
-                    error_msg = error_info.get("message", "Unknown error")
-                    raise A2AMessageError(f"Agent returned error: {error_msg}")
+                    error_detail = error_info.get("message", "Unknown error")
+                    msg = f"Agent returned error: {error_detail}"
+                    raise A2AMessageError(msg)
 
                 # Extract result
                 result = rpc_response.get("result", {})
