@@ -63,21 +63,42 @@ class Colors:
 
 
 def print_header(title: str, color: str = Colors.BLUE):
-    """Print a formatted header."""
+    """
+    Prints a colored, framed header block with the given title.
+    
+    Parameters:
+        title (str): Text to display in the header.
+        color (str): ANSI color code string used for the header frame and title (use values from Colors). Defaults to Colors.BLUE.
+    """
     print(f"\n{color}{'═' * 65}{Colors.NC}")
     print(f"{color}  {title}{Colors.NC}")
     print(f"{color}{'═' * 65}{Colors.NC}\n")
 
 
 def print_success(msg: str):
+    """
+    Prints a green checkmark-styled success message to standard output.
+    """
     print(f"{Colors.GREEN}✓{Colors.NC} {msg}")
 
 
 def print_error(msg: str):
+    """
+    Prints an error message to stdout prefixed with a red cross symbol.
+    
+    Parameters:
+        msg (str): The error text to display; printed in red with ANSI color reset after the message.
+    """
     print(f"{Colors.RED}✗{Colors.NC} {msg}")
 
 
 def print_info(msg: str):
+    """
+    Prints an informational message to stdout prefixed with a cyan arrow.
+    
+    Parameters:
+        msg (str): The message text to display.
+    """
     print(f"{Colors.CYAN}→{Colors.NC} {msg}")
 
 
@@ -96,25 +117,53 @@ class AgentRegistry:
     """Platform's agent registry."""
 
     def __init__(self):
+        """
+        Initialize the AgentRegistry with an empty mapping of agent names to registrations.
+        
+        The registry stores agents in `self.agents`, a dictionary mapping agent name (str) to AgentRegistration.
+        """
         self.agents: dict[str, AgentRegistration] = {}
 
     def register(self, agent: AgentRegistration):
+        """
+        Register an agent in the registry and report the registration.
+        
+        Parameters:
+            agent (AgentRegistration): Agent metadata to store; if an agent with the same name exists it will be overwritten.
+        """
         self.agents[agent.name] = agent
         print_success(f"Registered agent: {agent.name} ({agent.role})")
 
     def get_evaluator(self) -> AgentRegistration | None:
+        """
+        Finds the first registered agent with role "evaluator".
+        
+        Returns:
+            AgentRegistration or None: The first registered evaluator agent, or `None` if no evaluator is registered.
+        """
         for agent in self.agents.values():
             if agent.role == "evaluator":
                 return agent
         return None
 
     def get_evaluatee(self) -> AgentRegistration | None:
+        """
+        Get the first registered agent whose role is "evaluatee".
+        
+        Returns:
+            AgentRegistration | None: The evaluatee agent if present, `None` otherwise.
+        """
         for agent in self.agents.values():
             if agent.role == "evaluatee":
                 return agent
         return None
 
     def display(self):
+        """
+        Print a human-readable list of all registered agents showing each agent's name, role, model, endpoint, and capabilities.
+        
+        Each registered agent is displayed as a formatted block containing the agent's name, role, model identifier, A2A endpoint, and a comma-separated list of capabilities. Intended for human-readable terminal output; does not return a value.
+        """
         print("\nRegistered Agents:")
         for agent in self.agents.values():
             print(f"""
@@ -131,14 +180,35 @@ class A2AClient:
     """Simple A2A client for platform communication."""
 
     def __init__(self, timeout: float = 600.0):
+        """
+        Initialize the A2A client and its underlying HTTP client.
+        
+        Parameters:
+            timeout (float): Request timeout in seconds for the internal HTTP client; defaults to 600.0. The value is applied to the created httpx.AsyncClient used for A2A requests.
+        """
         self.timeout = timeout
         self.client = httpx.AsyncClient(timeout=timeout)
 
     async def close(self):
+        """
+        Close the underlying HTTP client and release associated network resources.
+        
+        Awaits the internal httpx.AsyncClient to finish and free its connections.
+        """
         await self.client.aclose()
 
     async def discover_agent(self, base_url: str, agent_name: str) -> dict | None:
-        """Fetch agent card for discovery."""
+        """
+        Retrieve an agent's discovery card from the platform A2A endpoint.
+        
+        Parameters:
+            base_url (str): Base URL of the platform (e.g., "http://localhost:8001").
+            agent_name (str): Agent identifier used in the A2A discovery path.
+        
+        Returns:
+            dict: Parsed JSON agent card when HTTP 200 is returned.
+            None: If the request fails or a non-200 response is received.
+        """
         url = f"{base_url}/a2a/{agent_name}/.well-known/agent-card.json"
         try:
             response = await self.client.get(url)
@@ -151,7 +221,17 @@ class A2AClient:
     async def send_message(
         self, endpoint: str, message: str, context_id: str | None = None
     ) -> dict:
-        """Send A2A JSON-RPC message."""
+        """
+        Send a JSON-RPC 2.0 A2A message to the specified endpoint.
+        
+        Parameters:
+        	endpoint (str): URL of the agent A2A endpoint to POST the message to.
+        	message (str): Text content to include as the single message part.
+        	context_id (str | None): Optional context identifier to include on the message.
+        
+        Returns:
+        	response (dict): Parsed JSON response from the endpoint.
+        """
         request_id = str(uuid.uuid4())
         message_id = str(uuid.uuid4())
 
@@ -178,7 +258,17 @@ class A2AClient:
 
 
 def extract_response_text(response: dict) -> str:
-    """Extract text content from A2A response."""
+    """
+    Extract the first text artifact from an A2A response.
+    
+    Parameters:
+        response (dict): Parsed A2A JSON response potentially containing `"result" -> "artifacts"`,
+            where each artifact has `"parts"` entries with `"kind"` and `"text"` fields.
+    
+    Returns:
+        str: The `text` value of the first artifact part with `"kind" == "text"`, or an empty
+        string if no such part is found or the response lacks the expected structure.
+    """
     try:
         result = response.get("result", {})
         artifacts = result.get("artifacts", [])
@@ -194,7 +284,16 @@ def extract_response_text(response: dict) -> str:
 
 
 async def run_platform_simulation(domain: str, num_tasks: int):
-    """Main platform simulation flow."""
+    """
+    Simulate the platform workflow that registers agents, discovers them via A2A, requests an evaluation, and displays results.
+    
+    This coroutine boots a mock agent evaluation platform: verifies required environment variables, registers an evaluator and an evaluatee in an AgentRegistry, discovers both agents using the A2A protocol, sends an evaluation request to the evaluator for the given domain and number of tasks, extracts and prints the evaluator's textual response (or error/raw output), and cleans up network resources.
+    
+    Parameters:
+        domain (str): Evaluation domain to request (e.g., "airline", "retail", "telecom", "mock").
+        num_tasks (int): Number of tasks to request the evaluator to run.
+    
+    """
     print(f"""
 {Colors.CYAN}╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
@@ -311,6 +410,15 @@ async def run_platform_simulation(domain: str, num_tasks: int):
 
 
 def main():
+    """
+    Parse command-line arguments for the simulation and execute the asynchronous platform workflow.
+    
+    Accepts two flags:
+    - --domain: evaluation domain; one of "airline", "retail", "telecom", or "mock" (default: "mock").
+    - --num-tasks: number of tasks to evaluate (integer, default: 2).
+    
+    Starts the event loop and runs run_platform_simulation with the parsed arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Platform simulation for A2A-based agent evaluation"
     )

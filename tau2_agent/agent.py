@@ -45,9 +45,13 @@ Be helpful in explaining evaluation metrics and suggesting improvements.
 
 
 def create_model():
-    """Create the LLM model for tau2_agent.
-
-    Uses Nebius Qwen model if NEBIUS_API_KEY is set, otherwise falls back to Gemini.
+    """
+    Selects and constructs the LLM model used by the agent.
+    
+    If the `NEBIUS_API_KEY` environment variable is present, returns a LiteLlm configured for the Nebius Qwen model and uses `NEBIUS_API_BASE` (default: "https://api.tokenfactory.nebius.com/v1/") as the API base. If `NEBIUS_API_KEY` is not set, returns the Gemini model identifier string "gemini-2.0-flash-exp".
+    
+    Returns:
+        A LiteLlm instance configured for Nebius when `NEBIUS_API_KEY` is set; otherwise the Gemini model identifier string `"gemini-2.0-flash-exp"`.
     """
     nebius_key = os.getenv("NEBIUS_API_KEY")
     if nebius_key:
@@ -67,23 +71,13 @@ def parse_text_tool_call(
     _callback_context, llm_response: LlmResponse
 ) -> LlmResponse | None:
     """
-    Parse text-based tool calls from LLM responses (model-agnostic).
-
-    This callback enables LLMs that don't support native function calling
-    (like some OpenAI-compatible models) to still use tools by responding
-    with JSON in the format: {"tool_call": {"name": "...", "arguments": {...}}}
-
-    The callback is model-agnostic:
-    - If the LLM already returned a native function_call, it passes through unchanged
-    - Only parses text-based tool calls when no native function_call exists
-
-    Args:
-        callback_context: The callback context (unused but required by ADK)
-        llm_response: The LLM response to parse
-
+    Parse a JSON-formatted text tool call from an LLM response and convert it into a function_call LlmResponse.
+    
+    Parameters:
+        llm_response (LlmResponse): The model response to inspect for a JSON `tool_call` object; ignored if the response already contains a native function_call.
+    
     Returns:
-        Modified LlmResponse with function_call if a text-based tool call was found,
-        None otherwise (to use the original response)
+        LlmResponse | None: A new LlmResponse whose single part is a function_call constructed from the parsed `tool_call` (with a generated id), or `None` if no valid text-based tool call is found.
     """
     if not llm_response.content or not llm_response.content.parts:
         return None

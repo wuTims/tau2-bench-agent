@@ -43,7 +43,12 @@ class RunTau2Evaluation(BaseTool):
     """
 
     def _get_declaration(self) -> types.FunctionDeclaration | None:
-        """Generate the function declaration for this tool."""
+        """
+        Create the FunctionDeclaration used by the ADK function-calling interface for this tool.
+        
+        Returns:
+            function_declaration (types.FunctionDeclaration | None): A FunctionDeclaration describing the tool's name, description, and parameter schema (including `domain`, `agent_endpoint`, `user_llm`, `num_trials`, and `num_tasks`), or `None` if a declaration cannot be generated.
+        """
         return types.FunctionDeclaration(
             name=self.name,
             description=self.description,
@@ -83,7 +88,22 @@ class RunTau2Evaluation(BaseTool):
     async def run_async(
         self, *, args: dict[str, Any], tool_context: ToolContext
     ) -> Any:
-        """Run the tool with ADK's standard interface."""
+        """
+        Invoke the tool via the ADK function-calling interface using the supplied arguments and context.
+        
+        Parameters:
+            args (dict[str, Any]): Input fields expected by the tool. Recognized keys:
+                - domain (str): Evaluation domain (required).
+                - agent_endpoint (str): A2A endpoint URL of the agent to evaluate (required).
+                - user_llm (str): LLM model identifier for the user simulator (optional).
+                - num_trials (int): Number of trials per task (optional, default 1).
+                - num_tasks (int | None): Number of tasks to evaluate (optional).
+                - task_ids (list[str] | None): Specific task IDs to evaluate (optional).
+            tool_context (ToolContext): ADK-provided execution context for the tool.
+        
+        Returns:
+            dict[str, Any]: Structured evaluation result (e.g., status, timestamp, summary, tasks) produced by the execution.
+        """
         return await self._execute(
             _tool_context=tool_context,
             domain=args.get("domain"),
@@ -104,7 +124,37 @@ class RunTau2Evaluation(BaseTool):
         num_tasks: int | None = None,
         task_ids: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Execute tau2-bench evaluation"""
+        """
+        Run a tau2-bench evaluation for a given domain and A2A agent endpoint.
+        
+        Validates the domain, constructs a RunConfig (wiring the agent endpoint and optional Nebius/OpenAI credentials for the user LLM), executes the evaluation in a thread pool to avoid blocking the event loop, computes aggregate metrics, and returns a structured summary and per-task metadata.
+        
+        Parameters:
+            domain (str): Evaluation domain identifier (e.g., "airline", "retail", "telecom", "mock").
+            agent_endpoint (str): A2A endpoint URL of the agent under test.
+            user_llm (str): LLM model identifier for the user simulator; defaults to DEFAULT_USER_LLM.
+            num_trials (int): Number of trials to run per task; defaults to 1.
+            num_tasks (int | None): Optional number of tasks to evaluate; when None, uses domain defaults.
+            task_ids (list[str] | None): Optional explicit list of task IDs to run.
+        
+        Returns:
+            dict[str, Any]: A result object with keys:
+                - status: "completed" on success.
+                - timestamp: evaluation timestamp from tau2 results.
+                - summary: dict with aggregated metrics:
+                    - total_simulations (int)
+                    - total_tasks (int)
+                    - successful_simulations (int)
+                    - avg_reward (float)
+                    - pass_hat_k (mapping or list as produced by tau2)
+                    - avg_agent_cost (float)
+                - tasks: list of per-task dicts with:
+                    - task_id (str)
+                    - purpose (str | None)
+        
+        Raises:
+            ValueError: If the provided domain is not recognized by tau2's registry.
+        """
         try:
             # Import tau2-bench components
             from tau2.data_model.simulation import RunConfig
