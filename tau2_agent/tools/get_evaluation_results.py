@@ -4,6 +4,7 @@ GetEvaluationResults tool for ADK agent.
 This tool enables external agents to retrieve completed evaluation results.
 """
 
+import re
 from typing import Any
 
 from google.adk.tools import BaseTool
@@ -43,7 +44,7 @@ class GetEvaluationResults(BaseTool):
         )
 
     async def run_async(
-        self, *, args: dict[str, Any], tool_context: ToolContext
+        self, *, args: dict[str, Any], tool_context: ToolContext  # noqa: ARG002
     ) -> Any:
         """Load evaluation results using tau2's Results.load()"""
         from tau2.data_model.simulation import Results
@@ -71,8 +72,23 @@ class GetEvaluationResults(BaseTool):
                 "message": "Provide evaluation_id or set list_available=true",
             }
 
+        # Sanitize evaluation_id to prevent path traversal attacks
+        # Only allow alphanumeric characters, hyphens, underscores, and dots (not leading)
+        if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_\-\.]*$', evaluation_id):
+            return {
+                "error": "Invalid evaluation_id format",
+                "message": "evaluation_id must contain only alphanumeric characters, hyphens, underscores, and dots",
+            }
+
         # Construct path to results file
         results_path = simulations_dir / f"{evaluation_id}.json"
+
+        # Verify the resolved path is within simulations_dir (defense in depth)
+        if not results_path.resolve().is_relative_to(simulations_dir.resolve()):
+            return {
+                "error": "Invalid evaluation_id",
+                "message": "Path traversal attempt detected",
+            }
 
         if not results_path.exists():
             return {
