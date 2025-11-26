@@ -192,16 +192,21 @@ class A2AAgent(LocalAgent):
 
             return assistant_msg, new_state
 
-        # Run async function in event loop
+        # Run async function - handle both cases: running in a thread or in an async context
         try:
-            return asyncio.run(_async_generate())
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            # If already in an event loop, create a new loop
-            loop = asyncio.new_event_loop()
-            try:
-                return loop.run_until_complete(_async_generate())
-            finally:
-                loop.close()
+            loop = None
+
+        if loop is None:
+            # No event loop running, create one
+            return asyncio.run(_async_generate())
+        else:
+            # Already in an async context - use nest_asyncio or new thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _async_generate())
+                return future.result()
 
     def stop(
         self,
