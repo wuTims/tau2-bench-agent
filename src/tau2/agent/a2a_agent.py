@@ -226,14 +226,19 @@ class A2AAgent(LocalAgent):
         async def _async_close():
             await self.client.close()
 
+        # Use same event loop handling pattern as generate_next_message
         try:
-            asyncio.run(_async_close())
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            try:
-                loop.run_until_complete(_async_close())
-            finally:
-                loop.close()
+            loop = None
+
+        if loop is None:
+            asyncio.run(_async_close())
+        else:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _async_close())
+                future.result()
 
         logger.debug("A2AAgent stopped and resources cleaned up")
 
