@@ -56,7 +56,7 @@ Rules:
 
 Always respond with either a tool call JSON or a helpful text message - never leave your response empty."""
 
-    # Create agent with Nebius Llama configuration
+    # Create agent with Nebius Qwen configuration
     agent = LlmAgent(
         model=llm_model,
         name="simple_nebius_agent",

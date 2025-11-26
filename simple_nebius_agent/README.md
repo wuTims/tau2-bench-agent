@@ -93,7 +93,7 @@ You can modify the agent behavior by editing [agent.py](agent.py):
 ```python
 # Change the model
 llm_model = LiteLlm(
-    model="openai/meta-llama/Meta-Llama-3.1-70B-Instruct",  # Larger model
+    model="nebius/Qwen/Qwen3-30B-A3B-Thinking-2507",  # Larger model
     api_base=api_base,
     api_key=api_key,
 )
