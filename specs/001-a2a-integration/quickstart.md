@@ -32,32 +32,38 @@ cp .env.example .env
 
 ## Quick Start
 
-### Option A: Basic Evaluation (Recommended)
+### 1. Start ADK Server
 
 ```bash
-./specs/001-a2a-integration/scripts/test_simple_agent.sh
-```
-
-Starts agent server, runs mock domain evaluation, displays results.
-
-### Option B: Platform Simulation (A2A-to-A2A)
-
-```bash
-# Terminal 1: Start ADK server
 adk api_server --a2a . --port 8001
-
-# Terminal 2: Run simulation
-python specs/001-a2a-integration/scripts/platform_simulation.py --domain mock --num-tasks 2
 ```
 
-### Option C: Domain Evaluation
+### 2. Verify Agents (new terminal)
 
+```bash
+# tau2_agent (evaluator)
+curl -s http://localhost:8001/a2a/tau2_agent/.well-known/agent-card.json | jq .name
+# → "tau2_eval_agent"
+
+# simple_nebius_agent (evaluatee)
+curl -s http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq .name
+# → "simple_nebius_agent"
+```
+
+### 3. Run Platform Simulation
+
+```bash
+python specs/001-a2a-integration/scripts/platform_simulation.py --domain mock --num-tasks 1
+```
+
+### Other Options
+
+**Domain Evaluation:**
 ```bash
 ./specs/001-a2a-integration/scripts/eval_domain.sh telecom 1 5  # domain, trials, tasks
 ```
 
-### Option D: Tests
-
+**Tests:**
 ```bash
 pytest tests/test_a2a_client/ -v                    # Unit tests (mocked)
 pytest tests/test_local_eval/ -v -m "local_agent"   # E2E (requires server)

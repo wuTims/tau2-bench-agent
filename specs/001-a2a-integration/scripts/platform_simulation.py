@@ -394,7 +394,7 @@ async def run_platform_simulation(domain: str, num_tasks: int):
             print_error(f"A2A Error: {response['error']}")
         else:
             print_info("Raw response:")
-            print(json.dumps(response, indent=2)[:1000])
+            print(json.dumps(response, indent=2))
 
     # Cleanup
     await client.close()
