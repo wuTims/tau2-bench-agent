@@ -11,7 +11,6 @@ from google.adk.tools.tool_context import ToolContext
 from google.genai import types
 from loguru import logger
 
-
 # Domain descriptions (tau2 doesn't store these in registry)
 DOMAIN_DESCRIPTIONS = {
     "airline": "Airline customer service (flights, bookings, cancellations)",
@@ -42,7 +41,7 @@ class ListDomains(BaseTool):
         )
 
     async def run_async(
-        self, *, args: dict[str, Any], tool_context: ToolContext
+        self, *, args: dict[str, Any], tool_context: ToolContext  # noqa: ARG002
     ) -> Any:
         """Run the tool using tau2's registry."""
         from tau2.registry import registry

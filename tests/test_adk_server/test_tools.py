@@ -71,7 +71,7 @@ async def test_run_tau2_evaluation_tool_success(mock_tool_context):
 
     # Create mock simulations with proper structure
     mock_simulations = []
-    for i in range(10):
+    for _ in range(10):
         sim = Mock()
         sim.task_id = "task-1"
         sim.task = mock_task
