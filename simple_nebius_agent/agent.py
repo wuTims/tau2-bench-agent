@@ -30,7 +30,7 @@ def create_agent() -> LlmAgent:
 
     # Create LiteLlm wrapper for Nebius API (OpenAI-compatible)
     llm_model = LiteLlm(
-        model="openai/meta-llama/Meta-Llama-3.1-8B-Instruct",
+        model="nebius/Qwen/Qwen3-30B-A3B-Thinking-2507",
         api_base=api_base,
         api_key=nebius_key,
     )
