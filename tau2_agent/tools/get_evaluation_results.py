@@ -2,27 +2,123 @@
 GetEvaluationResults tool for ADK agent.
 
 This tool enables external agents to retrieve completed evaluation results.
-Note: This is a placeholder implementation for Phase 1.
 """
 
 from typing import Any
 
 from google.adk.tools import BaseTool
+from google.adk.tools.tool_context import ToolContext
+from google.genai import types
+from loguru import logger
 
 
 class GetEvaluationResults(BaseTool):
     """Retrieve results from a completed evaluation"""
 
     name = "get_evaluation_results"
-    description = "Get detailed results from a tau2-bench evaluation by evaluation_id"
+    description = (
+        "Get detailed results from a tau2-bench evaluation. "
+        "Provide either evaluation_id (filename without .json) or list_available=true "
+        "to see available evaluation files."
+    )
 
-    async def __call__(self, tool_context, evaluation_id: str) -> dict[str, Any]:
-        """Load evaluation results from storage"""
-        # tau2-bench Results are returned directly from run_domain()
-        # This tool would need to load from saved results if save_to was specified
-        # For Phase 1, return guidance to use run_tau2_evaluation which returns results directly
-        return {
-            "error": "Results retrieval not yet implemented",
-            "message": "Use run_tau2_evaluation tool which returns results directly. "
-            + "For persisted results, tau2-bench saves to JSON files which can be loaded manually.",
-        }
+    def _get_declaration(self) -> types.FunctionDeclaration | None:
+        """Generate the function declaration for this tool."""
+        return types.FunctionDeclaration(
+            name=self.name,
+            description=self.description,
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "evaluation_id": types.Schema(
+                        type=types.Type.STRING,
+                        description="The ID/filename of the evaluation to retrieve (without .json extension)",
+                    ),
+                    "list_available": types.Schema(
+                        type=types.Type.BOOLEAN,
+                        description="If true, list all available evaluation result files",
+                    ),
+                },
+            ),
+        )
+
+    async def run_async(
+        self, *, args: dict[str, Any], _tool_context: ToolContext
+    ) -> Any:
+        """Load evaluation results using tau2's Results.load()"""
+        from tau2.data_model.simulation import Results
+        from tau2.metrics.agent_metrics import compute_metrics, is_successful
+        from tau2.utils.utils import DATA_DIR
+
+        simulations_dir = DATA_DIR / "simulations"
+
+        # List available evaluations if requested
+        if args.get("list_available"):
+            if not simulations_dir.exists():
+                return {"available_evaluations": [], "message": "No simulations directory found"}
+
+            files = list(simulations_dir.glob("*.json"))
+            return {
+                "available_evaluations": [f.stem for f in files],
+                "simulations_dir": str(simulations_dir),
+            }
+
+        # Load specific evaluation
+        evaluation_id = args.get("evaluation_id")
+        if not evaluation_id:
+            return {
+                "error": "Missing evaluation_id",
+                "message": "Provide evaluation_id or set list_available=true",
+            }
+
+        # Construct path to results file
+        results_path = simulations_dir / f"{evaluation_id}.json"
+
+        if not results_path.exists():
+            return {
+                "error": f"Evaluation not found: {evaluation_id}",
+                "available_evaluations": [f.stem for f in simulations_dir.glob("*.json")]
+                if simulations_dir.exists()
+                else [],
+            }
+
+        try:
+            # Use tau2's Results.load() method
+            results = Results.load(results_path)
+
+            # Use tau2's compute_metrics for analysis
+            metrics = compute_metrics(results)
+
+            # Count successful simulations using tau2's is_successful
+            successful_sims = sum(
+                1
+                for sim in results.simulations
+                if sim.reward_info and is_successful(sim.reward_info.reward)
+            )
+
+            return {
+                "evaluation_id": evaluation_id,
+                "timestamp": results.timestamp,
+                "info": {
+                    "num_trials": results.info.num_trials,
+                    "max_steps": results.info.max_steps,
+                    "agent": results.info.agent_info.implementation,
+                    "user": results.info.user_info.implementation,
+                },
+                "summary": {
+                    "total_simulations": len(results.simulations),
+                    "total_tasks": len(results.tasks),
+                    "successful_simulations": successful_sims,
+                    "avg_reward": metrics.avg_reward,
+                    "pass_hat_k": metrics.pass_hat_ks,
+                    "avg_agent_cost": metrics.avg_agent_cost,
+                },
+                "tasks": [{"task_id": task.id} for task in results.tasks],
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to load evaluation {evaluation_id}: {e}")
+            return {
+                "error": f"Failed to load evaluation: {e}",
+                "evaluation_id": evaluation_id,
+            }
