@@ -15,8 +15,24 @@ pip install -e .
 cp .env.example .env
 # Edit .env with your NEBIUS_API_KEY
 
-# 3. Run evaluation
-./specs/001-a2a-integration/scripts/test_simple_agent.sh
+# 3. Start ADK server (serves both agents)
+adk api_server --a2a . --port 8001
+```
+
+**Verify agents are running** (new terminal):
+```bash
+# tau2_agent (evaluator)
+curl -s http://localhost:8001/a2a/tau2_agent/.well-known/agent-card.json | jq .name
+# → "tau2_eval_agent"
+
+# simple_nebius_agent (evaluatee)
+curl -s http://localhost:8001/a2a/simple_nebius_agent/.well-known/agent-card.json | jq .name
+# → "simple_nebius_agent"
+```
+
+**Run platform simulation** (same terminal):
+```bash
+python specs/001-a2a-integration/scripts/platform_simulation.py --domain mock --num-tasks 1
 ```
 
 ---
@@ -65,23 +81,14 @@ sequenceDiagram
 
 ## Usage
 
-### Evaluate a Remote A2A Agent
+### Evaluate an A2A Agent
 
 ```bash
+# Requires ADK server running (see Quick Start)
 tau2 run airline \
   --agent a2a_agent \
-  --agent-a2a-endpoint https://your-agent.example.com \
-  --user-llm gpt-4o
-```
-
-### Run Platform Simulation (A2A-to-A2A)
-
-```bash
-# Terminal 1: Start ADK server
-adk api_server --a2a . --port 8001
-
-# Terminal 2: Run simulation
-python specs/001-a2a-integration/scripts/platform_simulation.py --domain mock --num-tasks 2
+  --agent-a2a-endpoint http://localhost:8001/a2a/simple_nebius_agent \
+  --user-llm nebius/Qwen/Qwen3-30B-A3B-Thinking-2507
 ```
 
 ### Domain Evaluation
