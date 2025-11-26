@@ -24,7 +24,12 @@ class GetEvaluationResults(BaseTool):
     )
 
     def _get_declaration(self) -> types.FunctionDeclaration | None:
-        """Generate the function declaration for this tool."""
+        """
+        Return a FunctionDeclaration describing this tool's public API.
+        
+        Returns:
+            declaration (types.FunctionDeclaration | None): A declaration object containing the tool name, description, and parameter schema, or `None` if the tool should not be exposed.
+        """
         return types.FunctionDeclaration(
             name=self.name,
             description=self.description,
@@ -46,7 +51,57 @@ class GetEvaluationResults(BaseTool):
     async def run_async(
         self, *, args: dict[str, Any], tool_context: ToolContext  # noqa: ARG002
     ) -> Any:
-        """Load evaluation results using tau2's Results.load()"""
+        """
+        Retrieve or list tau2 evaluation results from the simulations data directory.
+        
+        Parameters:
+            args (dict): Input arguments. Recognized keys:
+                - evaluation_id (str): Identifier of the evaluation file (filename without ".json") to load.
+                - list_available (bool): If truthy, return a list of available evaluation IDs instead of loading a specific result.
+            _tool_context: Invocation context (not used).
+        
+        Returns:
+            dict: One of the following payload shapes:
+              - Listing payload when `list_available` is truthy:
+                  {
+                    "available_evaluations": [<evaluation_id>, ...],
+                    "simulations_dir": "<absolute path to simulations directory>"
+                  }
+              - Error payloads for missing inputs or missing files:
+                  {
+                    "error": "<error message>",
+                    "message": "<explanatory message>"            # optional
+                  }
+                or
+                  {
+                    "error": "Evaluation not found: <evaluation_id>",
+                    "available_evaluations": [<evaluation_id>, ...]  # may be empty
+                  }
+              - Successful evaluation payload when a valid `evaluation_id` is provided:
+                  {
+                    "evaluation_id": "<evaluation_id>",
+                    "timestamp": <results.timestamp>,
+                    "info": {
+                      "num_trials": <int>,
+                      "max_steps": <int>,
+                      "agent": "<agent implementation>",
+                      "user": "<user implementation>"
+                    },
+                    "summary": {
+                      "total_simulations": <int>,
+                      "total_tasks": <int>,
+                      "successful_simulations": <int>,
+                      "avg_reward": <float>,
+                      "pass_hat_k": <object/metric>,
+                      "avg_agent_cost": <float>
+                    },
+                    "tasks": [{"task_id": "<task id>"}, ...]
+                  }
+        
+        Notes:
+            - If the simulations directory does not exist, the listing payload will return an empty `available_evaluations`.
+            - Any failure during loading or processing returns an error payload and logs the exception.
+        """
         from tau2.data_model.simulation import Results
         from tau2.metrics.agent_metrics import compute_metrics, is_successful
         from tau2.utils.utils import DATA_DIR

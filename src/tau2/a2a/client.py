@@ -46,7 +46,12 @@ class A2AClient:
         self._metrics: list[ProtocolMetrics] = []
 
     def _create_http_client(self) -> httpx.AsyncClient:
-        """Create a new HTTP client with configured settings."""
+        """
+        Create a configured httpx.AsyncClient for performing HTTP requests.
+        
+        Returns:
+            httpx.AsyncClient: An AsyncClient configured with the client's timeout, SSL verification setting, default JSON headers, and redirects enabled.
+        """
         return httpx.AsyncClient(
             timeout=httpx.Timeout(self.config.timeout),
             verify=self.config.verify_ssl,
@@ -56,11 +61,10 @@ class A2AClient:
 
     @contextlib.asynccontextmanager
     async def _http_client_context(self):
-        """Context manager for HTTP client.
-
-        When an external client was provided (for testing), reuses it.
-        Otherwise, creates a fresh client per request to avoid event loop issues.
-        See: https://github.com/encode/httpx/discussions/2489
+        """
+        Provide an async context manager that yields an httpx.AsyncClient.
+        
+        Yields the externally supplied client when one was provided to the instance; otherwise creates a new AsyncClient for the context and ensures it is closed on exit. The caller remains responsible for managing the lifecycle of an external client.
         """
         if self._http_client is not None:
             # External client provided - reuse it (caller manages lifecycle)
@@ -78,7 +82,12 @@ class A2AClient:
         return endpoint
 
     def _build_headers(self) -> dict[str, str]:
-        """Build HTTP headers including authentication."""
+        """
+        Construct standard JSON HTTP headers and include an Authorization Bearer header when an auth token is configured.
+        
+        Returns:
+            dict[str, str]: HTTP headers with "Content-Type" and "Accept" set to "application/json", and "Authorization" set to "Bearer <token>" if present in the client config.
+        """
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
