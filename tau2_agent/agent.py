@@ -154,7 +154,7 @@ def parse_text_tool_call(
         name=tool_name,
         args=tool_args,
     )
-    # ADK expects an id on function calls
+    # ADK expects an id on function calls; set post-creation as from_function_call doesn't accept id
     function_call_part.function_call.id = str(uuid.uuid4())
 
     # Return a new LlmResponse with the function call

@@ -42,7 +42,7 @@ class ListDomains(BaseTool):
         )
 
     async def run_async(
-        self, *, _args: dict[str, Any], _tool_context: ToolContext
+        self, *, args: dict[str, Any], tool_context: ToolContext
     ) -> Any:
         """Run the tool using tau2's registry."""
         from tau2.registry import registry

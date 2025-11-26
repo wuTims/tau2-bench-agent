@@ -43,7 +43,7 @@ class GetEvaluationResults(BaseTool):
         )
 
     async def run_async(
-        self, *, args: dict[str, Any], _tool_context: ToolContext
+        self, *, args: dict[str, Any], tool_context: ToolContext
     ) -> Any:
         """Load evaluation results using tau2's Results.load()"""
         from tau2.data_model.simulation import Results

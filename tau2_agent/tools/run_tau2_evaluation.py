@@ -80,7 +80,7 @@ class RunTau2Evaluation(BaseTool):
     ) -> Any:
         """Run the tool with ADK's standard interface."""
         return await self._execute(
-            tool_context=tool_context,
+            _tool_context=tool_context,
             domain=args.get("domain"),
             agent_endpoint=args.get("agent_endpoint"),
             user_llm=args.get("user_llm", DEFAULT_USER_LLM),
