@@ -56,9 +56,13 @@ def find_available_agent() -> str | None:
 
     # Fallback: scan for any valid agent directory
     for item in PROJECT_ROOT.iterdir():
-        if item.is_dir() and not item.name.startswith((".", "_", "test", "src")):
-            if (item / "agent.py").exists() and (item / "__init__.py").exists():
-                return item.name
+        if (
+            item.is_dir()
+            and not item.name.startswith((".", "_", "test", "src"))
+            and (item / "agent.py").exists()
+            and (item / "__init__.py").exists()
+        ):
+            return item.name
 
     return None
 

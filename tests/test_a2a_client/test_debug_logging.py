@@ -8,6 +8,7 @@ import pytest
 from loguru import logger
 
 from tau2.a2a.client import A2AClient
+from tau2.a2a.exceptions import A2AError
 from tau2.a2a.models import A2AConfig
 from tau2.agent.a2a_agent import A2AAgent
 from tau2.data_model.message import UserMessage
@@ -196,7 +197,7 @@ async def test_debug_logging_protocol_errors(a2a_config, caplog):
         client = A2AClient(config=a2a_config, http_client=http_client)
 
         # This should log error details at TRACE level
-        with pytest.raises(Exception):
+        with pytest.raises(A2AError, match="Message send failed"):
             await client.send_message("Test message")
 
     finally:
