@@ -6,7 +6,7 @@ This tool enables external agents to request tau2-bench evaluations via A2A prot
 
 import asyncio
 import os
-from typing import Any, Optional
+from typing import Any
 
 from google.adk.tools import BaseTool
 from google.adk.tools.tool_context import ToolContext
@@ -69,6 +69,11 @@ class RunTau2Evaluation(BaseTool):
                     "num_tasks": types.Schema(
                         type=types.Type.INTEGER,
                         description="Number of tasks to evaluate (optional)",
+                    ),
+                    "task_ids": types.Schema(
+                        type=types.Type.ARRAY,
+                        items=types.Schema(type=types.Type.STRING),
+                        description="Optional list of specific task IDs to run",
                     ),
                 },
                 required=["domain", "agent_endpoint"],
@@ -147,7 +152,6 @@ class RunTau2Evaluation(BaseTool):
                 max_steps=50,
                 max_errors=10,
                 save_to=None,
-                llm_review=False,
                 max_concurrency=1,
             )
 
