@@ -68,7 +68,7 @@ def create_model():
 
 
 def parse_text_tool_call(
-    _callback_context, llm_response: LlmResponse
+    *, callback_context, llm_response: LlmResponse
 ) -> LlmResponse | None:
     """
     Parse a JSON-formatted text tool call from an LLM response and convert it into a function_call LlmResponse.
