@@ -299,7 +299,7 @@ async def run_platform_simulation(domain: str, num_tasks: int):
 ║                                                               ║
 ║              🏢 Agent Evaluation Platform                     ║
 ║                                                               ║
-║    Simulating platform-mediated agent evaluation via A2A     ║
+║    Simulating platform-mediated agent evaluation via A2A      ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝{Colors.NC}
 """)
@@ -371,7 +371,7 @@ async def run_platform_simulation(domain: str, num_tasks: int):
     evaluation_message = f"""Please evaluate the agent at endpoint {evaluatee.endpoint} using the {domain} domain. Run the evaluation with {num_tasks} tasks and 1 trial per task. Use the run_tau2_evaluation tool to execute this evaluation."""
 
     print(f"Platform → tau2_agent (A2A JSON-RPC 2.0)")
-    print(f"\n  Message: {evaluation_message[:100]}...")
+    print(f"\n  Message: {evaluation_message}")
     print()
 
     print_info("Sending evaluation request to tau2_agent...")
