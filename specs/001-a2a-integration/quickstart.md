@@ -142,106 +142,98 @@ Any A2A Client ────▶│  │ tau2_agent                          │ �
 
 ```mermaid
 sequenceDiagram
-    participant tau2 as tau2-bench
+    participant Tau2 as tau2-bench
+    participant A2A as A2AAgent
     participant Client as A2AClient
-    participant Agent as Remote Agent
+    participant Remote as Remote Agent
 
-    tau2->>Client: discover_agent(endpoint)
-    Client->>Agent: GET /.well-known/agent-card.json
-    Agent-->>Client: AgentCard (name, capabilities)
-    Client-->>tau2: AgentCard validated
+    Note over Tau2: RunConfig(agent="a2a_agent", llm_agent=endpoint)
+    Tau2->>A2A: registry lookup + from_cli_args()
+    A2A->>Client: A2AClient(config)
+    Client->>Remote: GET /.well-known/agent-card.json
+    Remote-->>Client: AgentCard (name, capabilities)
+    Client-->>A2A: AgentCard validated
+    A2A-->>Tau2: A2AAgent ready
 ```
 
 ### 2. Message Exchange
 
+A2AAgent bridges tau2's sync interface with async HTTP:
+
 ```mermaid
 sequenceDiagram
-    participant Orch as Orchestrator
+    participant Orch as Orchestrator (sync)
     participant A2A as A2AAgent
     participant Client as A2AClient
     participant Remote as Remote Agent
 
     Orch->>A2A: generate_next_message(msg, state)
+
+    alt No event loop (CLI usage)
+        Note over A2A: Create new loop via asyncio.run()
+    else Event loop exists (ADK server)
+        Note over A2A: Run in thread to avoid blocking
+    end
+
+    Note over A2A,Remote: Inside async context:
     A2A->>A2A: tau2_to_a2a_message_content()
     A2A->>Client: send_message(content, context_id)
     Client->>Remote: POST / (JSON-RPC message/send)
     Remote-->>Client: JSON-RPC response
     Client-->>A2A: (response, new_context_id)
     A2A->>A2A: a2a_to_tau2_assistant_message()
+
     A2A-->>Orch: (AssistantMessage, updated_state)
 ```
 
-### 3. Async/Sync Bridge
-
-The A2AAgent bridges tau2's sync interface with async HTTP:
-
-```mermaid
-sequenceDiagram
-    participant Caller as Orchestrator (sync)
-    participant A2A as A2AAgent
-    participant Loop as asyncio
-
-    Caller->>A2A: generate_next_message()
-    A2A->>Loop: get_running_loop()
-
-    alt No event loop
-        Loop-->>A2A: RuntimeError
-        A2A->>Loop: asyncio.run(_async_generate())
-    else Loop exists
-        A2A->>A2A: ThreadPoolExecutor.submit()
-    end
-
-    A2A-->>Caller: (AssistantMessage, state)
-```
-
-### 4. Platform Simulation
+### 3. Platform Simulation
 
 ```mermaid
 sequenceDiagram
     participant Platform as Platform
-    participant tau2 as tau2_agent
+    participant Tau2Agent as tau2_agent
     participant Tool as run_tau2_evaluation
-    participant Eval as tau2-bench
+    participant Tau2 as tau2-bench
     participant Target as simple_nebius_agent
 
-    Platform->>tau2: A2A discover_agent()
-    tau2-->>Platform: AgentCard
+    Platform->>Tau2Agent: A2A discover_agent()
+    Tau2Agent-->>Platform: AgentCard
 
-    Platform->>tau2: A2A message/send("evaluate X on Y")
-    tau2->>Tool: run_tau2_evaluation(domain, endpoint)
-    Tool->>Eval: run_domain(config)
+    Platform->>Tau2Agent: A2A message/send("evaluate X on Y")
+    Tau2Agent->>Tool: run_tau2_evaluation(domain, endpoint)
+    Tool->>Tau2: run_domain(config)
 
     loop Each task
-        Eval->>Target: A2A message/send(user_msg)
-        Target-->>Eval: AssistantMessage
+        Tau2->>Target: A2A message/send(user_msg)
+        Target-->>Tau2: AssistantMessage
     end
 
-    Eval-->>Tool: Results
-    Tool-->>tau2: Formatted results
-    tau2-->>Platform: A2A response
+    Tau2-->>Tool: Results
+    Tool-->>Tau2Agent: Formatted results
+    Tau2Agent-->>Platform: A2A response
 ```
 
-### 5. Tool Execution (Local)
+### 4. Tool Execution (Local)
 
 Tools execute in tau2-bench, not on the remote agent:
 
 ```mermaid
 sequenceDiagram
-    participant Agent as Remote Agent
+    participant Remote as Remote Agent
     participant A2A as A2AAgent
     participant Orch as Orchestrator
     participant Tools as Local Executor
 
-    A2A->>Agent: message + tool descriptions
-    Agent-->>A2A: tool_call decision
+    A2A->>Remote: message + tool descriptions
+    Remote-->>A2A: tool_call decision
 
     A2A-->>Orch: AssistantMessage (ToolCalls)
     Orch->>Tools: Execute locally
     Tools-->>Orch: ToolMessage result
 
     Orch->>A2A: Send tool result
-    A2A->>Agent: A2A message (result)
-    Agent-->>A2A: Next response
+    A2A->>Remote: A2A message (result)
+    Remote-->>A2A: Next response
 ```
 
 ---
