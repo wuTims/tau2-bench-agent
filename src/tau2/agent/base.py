@@ -22,7 +22,6 @@ class AgentError(Exception):
     Generic exception for agent errors.
     """
 
-    pass
 
 
 def is_valid_agent_history_message(message: Message) -> bool:
@@ -57,8 +56,8 @@ class BaseAgent(ABC, Generic[AgentState]):
     @abstractmethod
     def stop(
         self,
-        message: Optional[ValidAgentInputMessage] = None,
-        state: Optional[AgentState] = None,
+        message: ValidAgentInputMessage | None = None,
+        state: AgentState | None = None,
     ) -> None:
         """
         Can be used to stop the agent.
@@ -71,7 +70,7 @@ class BaseAgent(ABC, Generic[AgentState]):
     @abstractmethod
     def get_init_state(
         self,
-        message_history: Optional[list[Message]] = None,
+        message_history: list[Message] | None = None,
     ) -> AgentState:
         """
         Get the initial state of the agent.
@@ -116,8 +115,8 @@ class LocalAgent(BaseAgent[AgentState]):
 
     def stop(
         self,
-        message: Optional[ValidAgentInputMessage] = None,
-        state: Optional[AgentState] = None,
+        message: ValidAgentInputMessage | None = None,
+        state: AgentState | None = None,
     ) -> None:
         """
         Stops the agent.
@@ -125,7 +124,6 @@ class LocalAgent(BaseAgent[AgentState]):
             message: The last message to the agent.
             state: The agent state.
         """
-        pass
 
 
 def validate_message_format(
@@ -134,8 +132,7 @@ def validate_message_format(
     """Validate the message format for the agent."""
     if solo:
         return validate_message_format_solo(message)
-    else:
-        return validate_message_format_default(message)
+    return validate_message_format_default(message)
 
 
 def validate_message_format_default(message: AssistantMessage) -> tuple[bool, str]:

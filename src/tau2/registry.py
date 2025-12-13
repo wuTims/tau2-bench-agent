@@ -1,42 +1,34 @@
 import json
-from typing import Callable, Dict, Optional, Type
+from collections.abc import Callable
+from typing import Dict, Optional, Type
 
 from loguru import logger
 from pydantic import BaseModel
 
+from tau2.agent.a2a_agent import A2AAgent
 from tau2.agent.base import BaseAgent
 from tau2.agent.llm_agent import LLMAgent, LLMGTAgent, LLMSoloAgent
 from tau2.data_model.tasks import Task
 from tau2.domains.airline.environment import (
     get_environment as airline_domain_get_environment,
-)
-from tau2.domains.airline.environment import get_tasks as airline_domain_get_tasks
-from tau2.domains.airline.environment import (
+    get_tasks as airline_domain_get_tasks,
     get_tasks_split as airline_domain_get_tasks_split,
 )
-from tau2.domains.mock.environment import get_environment as mock_domain_get_environment
-from tau2.domains.mock.environment import get_tasks as mock_domain_get_tasks
+from tau2.domains.mock.environment import (
+    get_environment as mock_domain_get_environment,
+    get_tasks as mock_domain_get_tasks,
+)
 from tau2.domains.retail.environment import (
     get_environment as retail_domain_get_environment,
-)
-from tau2.domains.retail.environment import get_tasks as retail_domain_get_tasks
-from tau2.domains.retail.environment import (
+    get_tasks as retail_domain_get_tasks,
     get_tasks_split as retail_domain_get_tasks_split,
 )
 from tau2.domains.telecom.environment import (
     get_environment_manual_policy as telecom_domain_get_environment_manual_policy,
-)
-from tau2.domains.telecom.environment import (
     get_environment_workflow_policy as telecom_domain_get_environment_workflow_policy,
-)
-from tau2.domains.telecom.environment import get_tasks as telecom_domain_get_tasks
-from tau2.domains.telecom.environment import (
+    get_tasks as telecom_domain_get_tasks,
     get_tasks_full as telecom_domain_get_tasks_full,
-)
-from tau2.domains.telecom.environment import (
     get_tasks_small as telecom_domain_get_tasks_small,
-)
-from tau2.domains.telecom.environment import (
     get_tasks_split as telecom_domain_get_tasks_split,
 )
 from tau2.environment.environment import Environment
@@ -57,16 +49,16 @@ class Registry:
     """Registry for Users, Agents, and Domains"""
 
     def __init__(self):
-        self._users: Dict[str, Type[BaseUser]] = {}
-        self._agents: Dict[str, Type[BaseAgent]] = {}
-        self._domains: Dict[str, Callable[[], Environment]] = {}
-        self._tasks: Dict[str, Callable[[Optional[str]], list[Task]]] = {}
-        self._task_splits: Dict[str, Callable[[], dict[str, list[str]]]] = {}
+        self._users: dict[str, type[BaseUser]] = {}
+        self._agents: dict[str, type[BaseAgent]] = {}
+        self._domains: dict[str, Callable[[], Environment]] = {}
+        self._tasks: dict[str, Callable[[str | None], list[Task]]] = {}
+        self._task_splits: dict[str, Callable[[], dict[str, list[str]]]] = {}
 
     def register_user(
         self,
         user_constructor: type[BaseUser],
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Decorator to register a new User implementation"""
         try:
@@ -83,7 +75,7 @@ class Registry:
     def register_agent(
         self,
         agent_constructor: type[BaseAgent],
-        name: Optional[str] = None,
+        name: str | None = None,
     ):
         """Decorator to register a new Agent implementation"""
         if not issubclass(agent_constructor, BaseAgent):
@@ -109,9 +101,9 @@ class Registry:
 
     def register_tasks(
         self,
-        get_tasks: Callable[[Optional[str]], list[Task]],
+        get_tasks: Callable[[str | None], list[Task]],
         name: str,
-        get_task_splits: Optional[Callable[[], dict[str, list[str]]]] = None,
+        get_task_splits: Callable[[], dict[str, list[str]]] | None = None,
     ):
         """Register a new Domain implementation.
         Args:
@@ -129,13 +121,13 @@ class Registry:
             logger.error(f"Error registering tasks {name}: {str(e)}")
             raise
 
-    def get_user_constructor(self, name: str) -> Type[BaseUser]:
+    def get_user_constructor(self, name: str) -> type[BaseUser]:
         """Get a registered User implementation by name"""
         if name not in self._users:
             raise KeyError(f"User {name} not found in registry")
         return self._users[name]
 
-    def get_agent_constructor(self, name: str) -> Type[BaseAgent]:
+    def get_agent_constructor(self, name: str) -> type[BaseAgent]:
         """Get a registered Agent implementation by name"""
         if name not in self._agents:
             raise KeyError(f"Agent {name} not found in registry")
@@ -147,7 +139,7 @@ class Registry:
             raise KeyError(f"Domain {name} not found in registry")
         return self._domains[name]
 
-    def get_tasks_loader(self, name: str) -> Callable[[Optional[str]], list[Task]]:
+    def get_tasks_loader(self, name: str) -> Callable[[str | None], list[Task]]:
         """Get a registered Task Set by name.
         Args:
             name: The name of the task set.
@@ -161,7 +153,7 @@ class Registry:
 
     def get_task_splits_loader(
         self, name: str
-    ) -> Optional[Callable[[], dict[str, list[str]]]]:
+    ) -> Callable[[], dict[str, list[str]]] | None:
         """Get a registered task split dict loader."""
         if name not in self._task_splits:
             return None
@@ -209,6 +201,7 @@ try:
     registry.register_agent(LLMAgent, "llm_agent")
     registry.register_agent(LLMGTAgent, "llm_agent_gt")
     registry.register_agent(LLMSoloAgent, "llm_agent_solo")
+    registry.register_agent(A2AAgent, "a2a_agent")
 
     registry.register_domain(mock_domain_get_environment, "mock")
     registry.register_tasks(mock_domain_get_tasks, "mock")
