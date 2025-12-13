@@ -10,7 +10,7 @@ class Variant(BaseModel):
     """Represents a specific variant of a product with its options, availability and price"""
 
     item_id: str = Field(description="Unique identifier for the variant")
-    options: Dict[str, str] = Field(
+    options: dict[str, str] = Field(
         description="Dictionary of option names to values (e.g. {'color': 'blue', 'size': 'large'})"
     )
     available: bool = Field(description="Whether this variant is currently in stock")
@@ -22,7 +22,7 @@ class Product(BaseModel):
 
     name: str = Field(description="Name of the product")
     product_id: str = Field(description="Unique identifier for the product")
-    variants: Dict[str, Variant] = Field(
+    variants: dict[str, Variant] = Field(
         description="Dictionary of variants indexed by variant ID"
     )
 
@@ -82,10 +82,10 @@ class User(BaseModel):
     name: UserName = Field(description="User's full name")
     address: UserAddress = Field(description="User's primary address")
     email: str = Field(description="User's email address")
-    payment_methods: Dict[str, PaymentMethod] = Field(
+    payment_methods: dict[str, PaymentMethod] = Field(
         description="Dictionary of payment methods indexed by payment method ID"
     )
-    orders: List[str] = Field(description="List of order IDs associated with this user")
+    orders: list[str] = Field(description="List of order IDs associated with this user")
 
 
 class OrderFullfilment(BaseModel):
@@ -104,7 +104,7 @@ class OrderItem(BaseModel):
     product_id: str = Field(description="ID of the product")
     item_id: str = Field(description="ID of the specific variant")
     price: float = Field(description="Price of the item at time of purchase")
-    options: Dict[str, str] = Field(description="Options selected for this item")
+    options: dict[str, str] = Field(description="Options selected for this item")
 
 
 OrderPaymentType = Literal["payment", "refund"]
@@ -139,32 +139,32 @@ class BaseOrder(BaseModel):
     order_id: str = Field(description="Unique identifier for the order")
     user_id: str = Field(description="Unique identifier for the user")
     address: UserAddress = Field(description="Address of the user")
-    items: List[OrderItem] = Field(description="Items in the order")
+    items: list[OrderItem] = Field(description="Items in the order")
     status: OrderStatus = Field(description="Status of the order")
-    fulfillments: List[OrderFullfilment] = Field(
+    fulfillments: list[OrderFullfilment] = Field(
         description="Fulfillments of the order"
     )
-    payment_history: List[OrderPayment] = Field(description="Payments of the order")
-    cancel_reason: Optional[CancelReason] = Field(
+    payment_history: list[OrderPayment] = Field(description="Payments of the order")
+    cancel_reason: CancelReason | None = Field(
         description="Reason for cancelling the order. Can'no longer needed' or 'ordered by mistake'",
         default=None,
     )
-    exchange_items: Optional[List[str]] = Field(
+    exchange_items: list[str] | None = Field(
         description="Items to be exchanged", default=None
     )
-    exchange_new_items: Optional[List[str]] = Field(
+    exchange_new_items: list[str] | None = Field(
         description="Items exchanged for", default=None
     )
-    exchange_payment_method_id: Optional[str] = Field(
+    exchange_payment_method_id: str | None = Field(
         description="Payment method ID for the exchange", default=None
     )
-    exchange_price_difference: Optional[float] = Field(
+    exchange_price_difference: float | None = Field(
         description="Price difference for the exchange", default=None
     )
-    return_items: Optional[List[str]] = Field(
+    return_items: list[str] | None = Field(
         description="Items to be returned", default=None
     )
-    return_payment_method_id: Optional[str] = Field(
+    return_payment_method_id: str | None = Field(
         description="Payment method ID for the return", default=None
     )
 
@@ -175,32 +175,32 @@ class Order(BaseModel):
     order_id: str = Field(description="Unique identifier for the order")
     user_id: str = Field(description="Unique identifier for the user")
     address: UserAddress = Field(description="Address of the user")
-    items: List[OrderItem] = Field(description="Items in the order")
+    items: list[OrderItem] = Field(description="Items in the order")
     status: OrderStatus = Field(description="Status of the order")
-    fulfillments: List[OrderFullfilment] = Field(
+    fulfillments: list[OrderFullfilment] = Field(
         description="Fulfillments of the order"
     )
-    payment_history: List[OrderPayment] = Field(description="Payments of the order")
-    cancel_reason: Optional[CancelReason] = Field(
+    payment_history: list[OrderPayment] = Field(description="Payments of the order")
+    cancel_reason: CancelReason | None = Field(
         description="Reason for cancelling the order. Should be 'no longer needed' or 'ordered by mistake'",
         default=None,
     )
-    exchange_items: Optional[List[str]] = Field(
+    exchange_items: list[str] | None = Field(
         description="Items to be exchanged", default=None
     )
-    exchange_new_items: Optional[List[str]] = Field(
+    exchange_new_items: list[str] | None = Field(
         description="Items exchanged for", default=None
     )
-    exchange_payment_method_id: Optional[str] = Field(
+    exchange_payment_method_id: str | None = Field(
         description="Payment method ID for the exchange", default=None
     )
-    exchange_price_difference: Optional[float] = Field(
+    exchange_price_difference: float | None = Field(
         description="Price difference for the exchange", default=None
     )
-    return_items: Optional[List[str]] = Field(
+    return_items: list[str] | None = Field(
         description="Items to be returned", default=None
     )
-    return_payment_method_id: Optional[str] = Field(
+    return_payment_method_id: str | None = Field(
         description="Payment method ID for the return", default=None
     )
 
@@ -208,13 +208,13 @@ class Order(BaseModel):
 class RetailDB(DB):
     """Database containing all retail-related data including products, users and orders"""
 
-    products: Dict[str, Product] = Field(
+    products: dict[str, Product] = Field(
         description="Dictionary of all products indexed by product ID"
     )
-    users: Dict[str, User] = Field(
+    users: dict[str, User] = Field(
         description="Dictionary of all users indexed by user ID"
     )
-    orders: Dict[str, Order] = Field(
+    orders: dict[str, Order] = Field(
         description="Dictionary of all orders indexed by order ID"
     )
 

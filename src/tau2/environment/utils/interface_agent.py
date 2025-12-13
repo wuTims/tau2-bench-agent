@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Callable, Optional
+from typing import Optional
 
 from loguru import logger
 from rich.console import Console
@@ -34,8 +35,8 @@ class InterfaceAgent:
     def __init__(
         self,
         environment: Environment,
-        llm: Optional[str] = DEFAULT_LLM_ENV_INTERFACE,
-        llm_args: Optional[dict] = DEFAULT_LLM_ENV_INTERFACE_ARGS,
+        llm: str | None = DEFAULT_LLM_ENV_INTERFACE,
+        llm_args: dict | None = DEFAULT_LLM_ENV_INTERFACE_ARGS,
     ):
         """
         Initialize the InterfaceAgent.
@@ -52,7 +53,7 @@ class InterfaceAgent:
     def respond(
         self,
         message: str,
-        message_history: Optional[list[Message]] = None,
+        message_history: list[Message] | None = None,
     ) -> tuple[AssistantMessage, list[Message]]:
         """
         Respond to a user message.

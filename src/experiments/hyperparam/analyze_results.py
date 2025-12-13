@@ -75,7 +75,7 @@ def reset_llm_registry():
     _LLM_REGISTRY = {}
 
 
-def get_all_known_llms() -> List[str]:
+def get_all_known_llms() -> list[str]:
     """
     Get a list of all LLMs that have been encountered.
 
@@ -85,7 +85,7 @@ def get_all_known_llms() -> List[str]:
     return list(_LLM_REGISTRY.keys())
 
 
-def get_pass_hat_k_values(df: pd.DataFrame) -> Tuple[List[int], List[float]]:
+def get_pass_hat_k_values(df: pd.DataFrame) -> tuple[list[int], list[float]]:
     """
     Get the pass^k values for the df_metrics dataframe.
     """

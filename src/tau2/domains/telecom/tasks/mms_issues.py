@@ -284,7 +284,7 @@ selection_sets = (
 )
 
 
-def task_validator(tasks: list[Optional[BaseTask]]):
+def task_validator(tasks: list[BaseTask | None]):
     """
     Validate that the tasks to ensure at least one mms issue is included.
     """

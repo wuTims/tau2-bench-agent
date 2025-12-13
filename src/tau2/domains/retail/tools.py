@@ -190,8 +190,8 @@ class RetailTools(ToolKitBase):  # Tools
     def exchange_delivered_order_items(
         self,
         order_id: str,
-        item_ids: List[str],
-        new_item_ids: List[str],
+        item_ids: list[str],
+        new_item_ids: list[str],
         payment_method_id: str,
     ) -> Order:
         """Exchange items in a delivered order to new items of the same product type.
@@ -421,8 +421,8 @@ class RetailTools(ToolKitBase):  # Tools
     def modify_pending_order_items(
         self,
         order_id: str,
-        item_ids: List[str],
-        new_item_ids: List[str],
+        item_ids: list[str],
+        new_item_ids: list[str],
         payment_method_id: str,
     ) -> Order:
         """Modify items in a pending order to new items of the same product type. For a pending order, this function can only be called once. The agent needs to explain the exchange detail and ask for explicit user confirmation (yes/no) to proceed.
@@ -630,7 +630,7 @@ class RetailTools(ToolKitBase):  # Tools
     def return_delivered_order_items(
         self,
         order_id: str,
-        item_ids: List[str],
+        item_ids: list[str],
         payment_method_id: str,
     ) -> Order:
         """Return some items of a delivered order.

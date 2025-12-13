@@ -1,8 +1,9 @@
 import json
 import random
 import textwrap
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Callable, Optional
+from typing import Optional
 
 from tau2.data_model.message import ToolCall
 from tau2.data_model.tasks import EnvAssertion, EnvFunctionCall, Task
@@ -50,7 +51,7 @@ class TaskManager:
         get_env_assertions: Callable[[bool], list[EnvAssertion]],
         set_surrounding: Callable[[Environment], list[EnvFunctionCall]],
         is_fixed: Callable[[Environment], bool],
-        task_validator: Optional[Callable[[list[Optional[BaseTask]]], bool]] = None,
+        task_validator: Callable[[list[BaseTask | None]], bool] | None = None,
         domain: str = "telecom",
     ):
         self.domain = domain

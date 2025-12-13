@@ -94,8 +94,8 @@ class TelecomEnvironment(Environment):
 
 
 def get_environment(
-    db: Optional[TelecomDB] = None,
-    user_db: Optional[TelecomUserDB] = None,
+    db: TelecomDB | None = None,
+    user_db: TelecomUserDB | None = None,
     solo_mode: bool = False,
     policy_type: str = "manual",  # "manual" or "workflow"
 ) -> TelecomEnvironment:
@@ -158,7 +158,7 @@ def load_tasks(path: str) -> list[Task]:
     return [Task.model_validate(task) for task in tasks]
 
 
-def load_tasks_split(path: str) -> Optional[dict[str, list[str]]]:
+def load_tasks_split(path: str) -> dict[str, list[str]] | None:
     """Load tasks split from a data file, could be json, yaml or toml file."""
     split_file = Path(path).parent / f"split_{Path(path).stem}.json"
     if split_file.exists():
@@ -167,7 +167,7 @@ def load_tasks_split(path: str) -> Optional[dict[str, list[str]]]:
     return None
 
 
-def get_tasks(task_split_name: Optional[str] = "base") -> list[Task]:
+def get_tasks(task_split_name: str | None = "base") -> list[Task]:
     tasks = load_tasks(TELECOM_TASK_SET_PATH)
     tasks = [Task.model_validate(task) for task in tasks]
     if task_split_name is None:

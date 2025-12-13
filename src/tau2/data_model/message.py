@@ -18,13 +18,13 @@ class SystemMessage(BaseModel):
     """
 
     role: SystemRole = Field(description="The role of the message sender.")
-    content: Optional[str] = Field(
+    content: str | None = Field(
         description="The content of the message.", default=None
     )
-    turn_idx: Optional[int] = Field(
+    turn_idx: int | None = Field(
         description="The index of the turn in the conversation.", default=None
     )
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         description="The timestamp of the message.", default_factory=get_now
     )
 
@@ -87,24 +87,24 @@ class ParticipantMessageBase(BaseModel):
 
     role: str = Field(description="The role of the message sender.")
 
-    content: Optional[str] = Field(
+    content: str | None = Field(
         description="The content of the message.", default=None
     )
-    tool_calls: Optional[list[ToolCall]] = Field(
+    tool_calls: list[ToolCall] | None = Field(
         description="The tool calls made in the message.", default=None
     )
-    turn_idx: Optional[int] = Field(
+    turn_idx: int | None = Field(
         description="The index of the turn in the conversation.", default=None
     )
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         description="The timestamp of the message.", default_factory=get_now
     )
-    cost: Optional[float] = Field(description="The cost of the message.", default=None)
+    cost: float | None = Field(description="The cost of the message.", default=None)
 
-    usage: Optional[dict] = Field(
+    usage: dict | None = Field(
         description="The token usage of the message.", default=None
     )
-    raw_data: Optional[dict] = Field(
+    raw_data: dict | None = Field(
         description="The raw data of the message.", default=None
     )
 
@@ -181,16 +181,16 @@ class ToolMessage(BaseModel):
 
     id: str = Field(description="The unique identifier for the tool call.")
     role: ToolRole = Field(description="The role of the message sender.")
-    content: Optional[str] = Field(description="The output of the tool.", default=None)
+    content: str | None = Field(description="The output of the tool.", default=None)
     requestor: Literal["user", "assistant"] = Field(
         "assistant",
         description="The requestor of the tool call.",
     )
     error: bool = Field(description="Whether the tool call failed.", default=False)
-    turn_idx: Optional[int] = Field(
+    turn_idx: int | None = Field(
         description="The index of the turn in the conversation.", default=None
     )
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         description="The timestamp of the message.", default_factory=get_now
     )
 

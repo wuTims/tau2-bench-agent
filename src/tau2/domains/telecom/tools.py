@@ -28,7 +28,7 @@ class IDGenerator:
     def __init__(self) -> None:
         self.id_counter = defaultdict(int)
 
-    def get_id(self, id_type: str, id_name: Optional[str] = None) -> str:
+    def get_id(self, id_type: str, id_name: str | None = None) -> str:
         self.id_counter[id_type] += 1
         id_name = id_name or id_type
         return f"{id_name}_{self.id_counter[id_type]}"
@@ -44,6 +44,28 @@ class TelecomTools(ToolKitBase):
         super().__init__(db)
         self.id_generator = IDGenerator()
 
+    def _normalize_phone(self, phone: str | None) -> str:
+        """Normalize phone number by keeping only digits.
+
+        Returns empty string for None/non-str inputs.
+        """
+        if not isinstance(phone, str):
+            return ""
+        return "".join(c for c in phone if c.isdigit())
+
+    def _phones_match(self, phone1: str | None, phone2: str | None) -> bool:
+        """Compare two phone numbers after normalizing both.
+
+        Returns False if either phone normalizes to fewer than 7 digits
+        (to avoid accidental matches on empty/placeholder values).
+        """
+        norm1 = self._normalize_phone(phone1)
+        norm2 = self._normalize_phone(phone2)
+        # Require minimum 7 digits to avoid matching empty/placeholder values
+        if len(norm1) < 7 or len(norm2) < 7:
+            return False
+        return norm1 == norm2
+
     # Customer Lookup
     @is_tool(ToolType.READ)
     def get_customer_by_phone(self, phone_number: str) -> Customer:
@@ -58,13 +80,13 @@ class TelecomTools(ToolKitBase):
         """
         # Check primary contact number
         for customer in self.db.customers:
-            if customer.phone_number == phone_number:
+            if self._phones_match(customer.phone_number, phone_number):
                 return customer
 
             # Check lines
             for line_id in customer.line_ids:
                 line = self._get_line_by_id(line_id)
-                if line and line.phone_number == phone_number:
+                if line and self._phones_match(line.phone_number, phone_number):
                     return customer
 
         raise ValueError(f"Customer with phone number {phone_number} not found")
@@ -87,7 +109,7 @@ class TelecomTools(ToolKitBase):
         raise ValueError(f"Customer with ID {customer_id} not found")
 
     @is_tool(ToolType.READ)
-    def get_customer_by_name(self, full_name: str, dob: str) -> List[Customer]:
+    def get_customer_by_name(self, full_name: str, dob: str) -> list[Customer]:
         """
         Searches for customers by name and DOB. May return multiple matches if names are similar,
         DOB helps disambiguate.
@@ -125,7 +147,7 @@ class TelecomTools(ToolKitBase):
             ValueError: If the line with the specified phone number is not found.
         """
         for line in self.db.lines:
-            if line.phone_number == phone_number:
+            if self._phones_match(line.phone_number, phone_number):
                 return line
         raise ValueError(f"Line with phone number {phone_number} not found")
 
@@ -224,14 +246,14 @@ class TelecomTools(ToolKitBase):
             raise ValueError(f"Line {line_id} not found for customer {customer_id}")
         return self._get_line_by_id(line_id)
 
-    def get_available_plan_ids(self) -> List[str]:
+    def get_available_plan_ids(self) -> list[str]:
         """
         Returns all the plans that are available to the user.
         """
         return [plan.plan_id for plan in self.db.plans]
 
     @is_tool(ToolType.READ)
-    def get_details_by_id(self, id: str) -> Dict[str, Any]:
+    def get_details_by_id(self, id: str) -> dict[str, Any]:
         """
         Retrieves the details for a given ID.
         The ID must be a valid ID for a Customer, Line, Device, Bill, or Plan.
@@ -247,21 +269,20 @@ class TelecomTools(ToolKitBase):
         """
         if id.startswith("L"):
             return self._get_line_by_id(id)
-        elif id.startswith("D"):
+        if id.startswith("D"):
             return self._get_device_by_id(id)
-        elif id.startswith("B"):
+        if id.startswith("B"):
             return self._get_bill_by_id(id)
-        elif id.startswith("C"):
+        if id.startswith("C"):
             return self.get_customer_by_id(id)
-        elif id.startswith("P"):
+        if id.startswith("P"):
             return self._get_plan_by_id(id)
-        else:
-            raise ValueError(f"Unknown ID format or type: {id}")
+        raise ValueError(f"Unknown ID format or type: {id}")
 
     @is_tool(ToolType.WRITE)
     def suspend_line(
         self, customer_id: str, line_id: str, reason: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Suspends a specific line (max 6 months).
         Checks: Line status must be Active.
@@ -295,7 +316,7 @@ class TelecomTools(ToolKitBase):
         }
 
     @is_tool(ToolType.WRITE)
-    def resume_line(self, customer_id: str, line_id: str) -> Dict[str, Any]:
+    def resume_line(self, customer_id: str, line_id: str) -> dict[str, Any]:
         """
         Resumes a suspended line.
         Checks: Line status must be Suspended or Pending Activation.
@@ -332,7 +353,7 @@ class TelecomTools(ToolKitBase):
 
     # Billing and Payments
     @is_tool(ToolType.READ)
-    def get_bills_for_customer(self, customer_id: str, limit: int = 12) -> List[Bill]:
+    def get_bills_for_customer(self, customer_id: str, limit: int = 12) -> list[Bill]:
         """
         Retrieves a list of the customer's bills, most recent first.
 
@@ -392,7 +413,7 @@ class TelecomTools(ToolKitBase):
         bill.status = BillStatus.AWAITING_PAYMENT
         return f"Payment request sent to the customer for bill {bill.bill_id}"
 
-    def _get_bills_awaiting_payment(self, customer: Customer) -> List[Bill]:
+    def _get_bills_awaiting_payment(self, customer: Customer) -> list[Bill]:
         """
         Returns the bills in the customer's bill_ids list that are in the AWAITING_PAYMENT status.
         """
@@ -482,7 +503,7 @@ class TelecomTools(ToolKitBase):
 
     # Usage and Contract Info
     @is_tool(ToolType.READ)
-    def get_data_usage(self, customer_id: str, line_id: str) -> Dict[str, Any]:
+    def get_data_usage(self, customer_id: str, line_id: str) -> dict[str, Any]:
         """
         Retrieves current billing cycle data usage for a line, including data
         refueling amount, data limit, and cycle end date.
@@ -537,7 +558,7 @@ class TelecomTools(ToolKitBase):
         return f"Data usage set to {data_used_gb} GB for line {line_id}"
 
     @is_tool(ToolType.WRITE)
-    def enable_roaming(self, customer_id: str, line_id: str) -> Dict[str, Any]:
+    def enable_roaming(self, customer_id: str, line_id: str) -> dict[str, Any]:
         """
         Enables international roaming on a line.
 
@@ -607,7 +628,7 @@ class TelecomTools(ToolKitBase):
     @is_tool(ToolType.WRITE)
     def refuel_data(
         self, customer_id: str, line_id: str, gb_amount: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Refuels data for a specific line, adding to the customer's bill.
         Checks: Line status must be Active, Customer owns the line.

@@ -25,7 +25,7 @@ def task_with_initial_state_initialization_data_name():
 @pytest.fixture
 def tasks_dict():
     task_file = DATA_DIR / "tau2" / "domains" / "mock" / "tasks.json"
-    with open(task_file, "r") as f:
+    with open(task_file) as f:
         task_dicts = json.load(f)
     tasks_dict = {v["id"]: v for v in task_dicts}
     return tasks_dict

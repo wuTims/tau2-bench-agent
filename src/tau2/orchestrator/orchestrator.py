@@ -88,7 +88,7 @@ class Orchestrator:
         task: Task,
         max_steps: int = 100,
         max_errors: int = 10,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         solo_mode: bool = False,
         validate_communication: bool = False,
     ):
@@ -119,18 +119,18 @@ class Orchestrator:
         self.seed = seed
         self.solo_mode = solo_mode
         self.validate_communication = validate_communication
-        self.agent_state: Optional[Any] = None
-        self.user_state: Optional[UserState] = None
+        self.agent_state: Any | None = None
+        self.user_state: UserState | None = None
         self.trajectory: list[Message] = []
         self.max_steps = max_steps
         self.max_errors = max_errors
         self.step_count = 0
         self.done = False
-        self.termination_reason: Optional[TerminationReason] = None
+        self.termination_reason: TerminationReason | None = None
         self.num_errors = 0
-        self.from_role: Optional[Role] = None
-        self.to_role: Optional[Role] = None
-        self.message: Optional[Message] = None
+        self.from_role: Role | None = None
+        self.to_role: Role | None = None
+        self.message: Message | None = None
 
     def initialize(self):
         """
@@ -585,8 +585,8 @@ class Orchestrator:
 
     def _initialize_environment(
         self,
-        initialization_data: Optional[InitializationData],
-        initialization_actions: Optional[list[EnvFunctionCall]],
+        initialization_data: InitializationData | None,
+        initialization_actions: list[EnvFunctionCall] | None,
         message_history: list[Message],
     ):
         """

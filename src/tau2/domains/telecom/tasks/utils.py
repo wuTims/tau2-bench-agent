@@ -1,6 +1,7 @@
 import re
+from collections.abc import Callable
 from itertools import product
-from typing import Callable, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -60,7 +61,7 @@ class ComposedTask(BaseModel):
 
 def compose_tasks(
     selection_sets: list[SelectionSet],
-    task_validator: Optional[Callable[[list[Optional[BaseTask]]], bool]] = None,
+    task_validator: Callable[[list[BaseTask | None]], bool] | None = None,
 ) -> list[ComposedTask]:
     """
     Return all the combinations of selecting 0 or more tasks from the selection sets
@@ -101,8 +102,7 @@ def get_intent_from_task_id(task_id: str) -> str:
     match = re.search(pat, task_id)
     if match:
         return match.group(1)
-    else:
-        raise ValueError(f"Could not extract intent from task_id: {task_id}")
+    raise ValueError(f"Could not extract intent from task_id: {task_id}")
 
 
 def get_persona_from_task_id(task_id: str) -> str:
@@ -114,8 +114,7 @@ def get_persona_from_task_id(task_id: str) -> str:
     match = re.search(pat, task_id)
     if match:
         return match.group(1)
-    else:
-        raise ValueError(f"Could not extract intent from task_id: {task_id}")
+    raise ValueError(f"Could not extract intent from task_id: {task_id}")
 
 
 def get_num_issues_from_task_id(task_id: str) -> int:

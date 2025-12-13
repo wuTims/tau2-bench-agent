@@ -63,7 +63,7 @@ class AirlineTools(ToolKitBase):  # Tools
         return flight.dates[date]
 
     def _get_flights_from_flight_infos(
-        self, flight_infos: List[FlightInfo]
+        self, flight_infos: list[FlightInfo]
     ) -> list[FlightDateStatus]:
         """Get the flight from the reservation."""
         flights = []
@@ -104,9 +104,9 @@ class AirlineTools(ToolKitBase):  # Tools
     def _search_direct_flight(
         self,
         date: str,
-        origin: Optional[str] = None,
-        destination: Optional[str] = None,
-        leave_after: Optional[str] = None,
+        origin: str | None = None,
+        destination: str | None = None,
+        leave_after: str | None = None,
     ) -> list[DirectFlight]:
         """Search for direct flights
 
@@ -144,7 +144,7 @@ class AirlineTools(ToolKitBase):  # Tools
 
     def _payment_for_update(
         self, user: User, payment_id: str, total_price: int
-    ) -> Optional[Payment]:
+    ) -> Payment | None:
         """
         Process payment for update reservation
 
@@ -165,7 +165,7 @@ class AirlineTools(ToolKitBase):  # Tools
         payment_method = user.payment_methods[payment_id]
         if payment_method.source == "certificate":
             raise ValueError("Certificate cannot be used to update reservation")
-        elif (
+        if (
             payment_method.source == "gift_card" and payment_method.amount < total_price
         ):
             raise ValueError("Gift card balance is not enough")
@@ -191,9 +191,9 @@ class AirlineTools(ToolKitBase):  # Tools
         destination: str,
         flight_type: FlightType,
         cabin: CabinClass,
-        flights: List[FlightInfo | dict],
-        passengers: List[Passenger | dict],
-        payment_methods: List[Payment | dict],
+        flights: list[FlightInfo | dict],
+        passengers: list[Passenger | dict],
+        payment_methods: list[Payment | dict],
         total_baggages: int,
         nonfree_baggages: int,
         insurance: Insurance,
@@ -593,7 +593,7 @@ class AirlineTools(ToolKitBase):  # Tools
         self,
         reservation_id: str,
         cabin: CabinClass,
-        flights: List[FlightInfo | dict],
+        flights: list[FlightInfo | dict],
         payment_id: str,
     ) -> Reservation:
         """
@@ -691,7 +691,7 @@ class AirlineTools(ToolKitBase):  # Tools
 
     @is_tool(ToolType.WRITE)
     def update_reservation_passengers(
-        self, reservation_id: str, passengers: List[Passenger | dict]
+        self, reservation_id: str, passengers: list[Passenger | dict]
     ) -> Reservation:
         """
         Update the passenger information of a reservation.

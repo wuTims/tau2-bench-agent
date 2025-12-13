@@ -9,7 +9,7 @@ def convert_dot_to_pdf(dot_file: Path):
     """Convert a DOT file to PDF using graphviz."""
     try:
         # Read the DOT file
-        with open(dot_file, "r") as f:
+        with open(dot_file) as f:
             dot_content = f.read()
 
         # Create a graph from the DOT content

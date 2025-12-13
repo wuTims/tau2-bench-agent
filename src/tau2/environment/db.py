@@ -34,7 +34,7 @@ class DB(BaseModelNoExtra):
         return {}
 
 
-def get_db_json_schema(db: Optional[DB] = None) -> dict[str, Any]:
+def get_db_json_schema(db: DB | None = None) -> dict[str, Any]:
     """Get the JSONschema of the database."""
     if db is None:
         return {}

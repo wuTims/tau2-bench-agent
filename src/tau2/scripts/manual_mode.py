@@ -71,15 +71,14 @@ def display_domains():
             choice_idx = int(choice) - 1
             if 0 <= choice_idx < len(domains):
                 return domains[choice_idx]
-            else:
-                console.print(
-                    f"[red]Please enter a number between 1 and {len(domains)}[/red]"
-                )
+            console.print(
+                f"[red]Please enter a number between 1 and {len(domains)}[/red]"
+            )
         except ValueError:
             console.print("[red]Please enter a valid number[/red]")
 
 
-def display_task_split_set(domain: str) -> Optional[str]:
+def display_task_split_set(domain: str) -> str | None:
     """Display available task split sets for the domain and let user choose one."""
     task_splits = load_task_splits(domain)
     if task_splits is None:
@@ -107,15 +106,14 @@ def display_task_split_set(domain: str) -> Optional[str]:
             choice_idx = int(choice) - 1
             if 0 <= choice_idx < len(task_splits):
                 return list(task_splits.keys())[choice_idx]
-            else:
-                console.print(
-                    f"[red]Please enter a number between 1 and {len(task_splits)}[/red]"
-                )
+            console.print(
+                f"[red]Please enter a number between 1 and {len(task_splits)}[/red]"
+            )
         except ValueError:
             console.print("[red]Please enter a valid number[/red]")
 
 
-def display_tasks(domain: str, task_split_set: Optional[str] = None):
+def display_tasks(domain: str, task_split_set: str | None = None):
     """Display available tasks for the domain and let user choose one."""
     # Try to load tasks for the domain
     try:
@@ -166,10 +164,9 @@ def display_tasks(domain: str, task_split_set: Optional[str] = None):
             choice_idx = int(choice) - 1
             if 0 <= choice_idx < len(tasks):
                 return tasks[choice_idx]
-            else:
-                console.print(
-                    f"[red]Please enter a number between 1 and {len(tasks)}[/red]"
-                )
+            console.print(
+                f"[red]Please enter a number between 1 and {len(tasks)}[/red]"
+            )
         except ValueError:
             console.print("[red]Please enter a valid number[/red]")
 
@@ -286,7 +283,7 @@ def get_user_action(
         action = Prompt.ask("[bold green]Action[/bold green]")
         if action.lower() == "quit":
             return None
-        elif action.lower() == "help":
+        if action.lower() == "help":
             help_content = """[bold]📋 Available commands:[/bold]
 • Type any text to send as your response
 • 'quit': Exit the simulation
@@ -684,7 +681,7 @@ This allows you to interact with the simulation as if you were the AI agent.
                         )
                     )
                     break
-                elif truncated:
+                if truncated:
                     console.print(
                         Panel(
                             "[bold yellow]Simulation was truncated (time limit reached)[/bold yellow]",

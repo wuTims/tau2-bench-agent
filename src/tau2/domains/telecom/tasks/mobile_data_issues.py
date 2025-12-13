@@ -511,7 +511,7 @@ mobile_data_issues_selection_sets = [
 selection_sets = service_issues_sample_sets + mobile_data_issues_selection_sets
 
 
-def task_validator(tasks: list[Optional[BaseTask]]):
+def task_validator(tasks: list[BaseTask | None]):
     """
     Validate that the tasks to ensure at least one mobile data issue is included.
     """

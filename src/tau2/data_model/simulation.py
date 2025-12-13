@@ -1,11 +1,10 @@
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import pandas as pd
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
 
 from tau2.config import (
     DEFAULT_LLM_AGENT,
@@ -35,28 +34,28 @@ class RunConfig(BaseModel):
         ),
     ]
     task_set_name: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="The task set to run the simulation on. If not provided, will load default task set for the domain.",
             default=None,
         ),
     ]
     task_split_name: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="The task split to run the simulation on. If not provided, will load 'base' split.",
             default="base",
         ),
     ]
     task_ids: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         Field(
             description="The task IDs to run the simulation on",
             default=None,
         ),
     ]
     num_tasks: Annotated[
-        Optional[int],
+        int | None,
         Field(
             description="The number of tasks to run the simulation on",
             default=None,
@@ -133,7 +132,7 @@ class RunConfig(BaseModel):
         ),
     ]
     save_to: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="The path to json file where to save the simulation results",
             default=DEFAULT_SAVE_TO,
@@ -147,14 +146,14 @@ class RunConfig(BaseModel):
         ),
     ]
     seed: Annotated[
-        Optional[int],
+        int | None,
         Field(
             description="The seed to use for the simulation",
             default=DEFAULT_SEED,
         ),
     ]
     log_level: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="The log level to use for the simulation",
             default=DEFAULT_LOG_LEVEL,
@@ -167,12 +166,18 @@ class RunConfig(BaseModel):
             default=False,
         ),
     ]
+    a2a_debug: Annotated[
+        bool,
+        Field(
+            description="Enable verbose debug logging for A2A protocol (message payloads, context lifecycle, tool descriptions)",
+            default=False,
+        ),
+    ]
 
     def validate(self) -> None:
         """
         Validate the run config
         """
-        pass
 
 
 class NLAssertionCheck(BaseModel):
@@ -231,43 +236,43 @@ class RewardInfo(BaseModel):
 
     reward: Annotated[float, Field(description="The reward received by the agent.")]
     db_check: Annotated[
-        Optional[DBCheck], Field(description="The database check.", default=None)
+        DBCheck | None, Field(description="The database check.", default=None)
     ]
     env_assertions: Annotated[
-        Optional[list[EnvAssertionCheck]],
+        list[EnvAssertionCheck] | None,
         Field(description="The environment assertions.", default=None),
     ]
     action_checks: Annotated[
-        Optional[list[ActionCheck]],
+        list[ActionCheck] | None,
         Field(description="The action checks.", default=None),
     ]
     nl_assertions: Annotated[
-        Optional[list[NLAssertionCheck]],
+        list[NLAssertionCheck] | None,
         Field(description="The natural language assertions.", default=None),
     ]
     communicate_checks: Annotated[
-        Optional[list[CommunicateCheck]],
+        list[CommunicateCheck] | None,
         Field(
             description="Checks that the agent communicated the required information.",
             default=None,
         ),
     ]
     reward_basis: Annotated[
-        Optional[list[RewardType]],
+        list[RewardType] | None,
         Field(
             description="The basis of the reward. Fields that are used to calculate the reward.",
             default_factory=lambda: [RewardType.DB],
         ),
     ]
     reward_breakdown: Annotated[
-        Optional[dict[RewardType, float]],
+        dict[RewardType, float] | None,
         Field(
             description="The breakdown of the reward.",
             default=None,
         ),
     ]
     info: Annotated[
-        Optional[dict],
+        dict | None,
         Field(description="Additional information about the reward.", default=None),
     ]
 
@@ -278,8 +283,8 @@ class AgentInfo(BaseModel):
     """
 
     implementation: str = Field(description="The type of agent.")
-    llm: Optional[str] = Field(description="The LLM used by the agent.", default=None)
-    llm_args: Optional[dict] = Field(
+    llm: str | None = Field(description="The LLM used by the agent.", default=None)
+    llm_args: dict | None = Field(
         description="The arguments to pass to the LLM for the agent.", default=None
     )
 
@@ -290,11 +295,11 @@ class UserInfo(BaseModel):
     """
 
     implementation: str = Field(description="The type of user.")
-    llm: Optional[str] = Field(description="The LLM used by the user.", default=None)
-    llm_args: Optional[dict] = Field(
+    llm: str | None = Field(description="The LLM used by the user.", default=None)
+    llm_args: dict | None = Field(
         description="The arguments to pass to the LLM for the user.", default=None
     )
-    global_simulation_guidelines: Optional[str] = Field(
+    global_simulation_guidelines: str | None = Field(
         description="The global simulation guidelines for the user.", default=None
     )
 
@@ -309,7 +314,7 @@ class Info(BaseModel):
     user_info: UserInfo = Field(description="User information.")
     agent_info: AgentInfo = Field(description="Agent information.")
     environment_info: EnvironmentInfo = Field(description="Environment information.")
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         description="The seed used for the simulation.", default=None
     )
 
@@ -339,20 +344,20 @@ class SimulationRun(BaseModel):
     termination_reason: TerminationReason = Field(
         description="The reason for the termination of the simulation."
     )
-    agent_cost: Optional[float] = Field(
+    agent_cost: float | None = Field(
         description="The cost of the agent.", default=None
     )
-    user_cost: Optional[float] = Field(
+    user_cost: float | None = Field(
         description="The cost of the user.", default=None
     )
-    reward_info: Optional[RewardInfo] = Field(
+    reward_info: RewardInfo | None = Field(
         description="The reward received by the agent.", default=None
     )
     messages: list[Message] = Field(
         description="The messages exchanged between the user, agent and environment."
     )
-    trial: Optional[int] = Field(description="Trial number", default=None)
-    seed: Optional[int] = Field(
+    trial: int | None = Field(description="Trial number", default=None)
+    seed: int | None = Field(
         description="Seed used for the simulation.", default=None
     )
 
@@ -362,7 +367,7 @@ class Results(BaseModel):
     Run results
     """
 
-    timestamp: Optional[str] = Field(
+    timestamp: str | None = Field(
         description="The timestamp of the simulation.", default_factory=get_now
     )
     info: Info = Field(description="Information.")
@@ -371,7 +376,7 @@ class Results(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> "Results":
-        with open(path, "r") as f:
+        with open(path) as f:
             return cls.model_validate_json(f.read())
 
     def save(self, path: Path) -> None:

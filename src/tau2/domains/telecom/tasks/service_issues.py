@@ -32,14 +32,13 @@ def get_env_assertions(expected_success: bool) -> list[EnvAssertion]:
                 message="Overdue bill is not as expected",
             ),
         ]
-    else:
-        return [
-            EnvAssertion(
-                env_type="user",
-                func_name="assert_service_status",
-                arguments={"expected_status": "no_service"},
-            ),
-        ]
+    return [
+        EnvAssertion(
+            env_type="user",
+            func_name="assert_service_status",
+            arguments={"expected_status": "no_service"},
+        ),
+    ]
 
 
 def is_fixed(env: TelecomEnvironment) -> bool:

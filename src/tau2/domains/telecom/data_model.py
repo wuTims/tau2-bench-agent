@@ -40,7 +40,7 @@ class Device(BaseModelNoExtra):
     device_id: str = Field(description="Unique identifier for the device")
     device_type: DeviceType = Field(description="Type/category of the device")
     model: str = Field(description="Model name/number of the device")
-    imei: Optional[str] = Field(
+    imei: str | None = Field(
         None, description="International Mobile Equipment Identity number"
     )
     is_esim_capable: bool = Field(
@@ -49,11 +49,11 @@ class Device(BaseModelNoExtra):
     activated: bool = Field(
         False, description="Whether the device has been activated on the network"
     )
-    activation_date: Optional[datetime.datetime] = Field(
+    activation_date: datetime.datetime | None = Field(
         None,
         description="Date and time when the device was activated (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
     )
-    last_esim_transfer_date: Optional[datetime.datetime] = Field(
+    last_esim_transfer_date: datetime.datetime | None = Field(
         None,
         description="Last date an eSIM profile was transferred to this device (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
     )
@@ -73,7 +73,7 @@ class Line(BaseModelNoExtra):
         LineStatus.PENDING_ACTIVATION, description="Current status of the line"
     )
     plan_id: str = Field(description="Plan associated with this line")
-    device_id: Optional[str] = Field(
+    device_id: str | None = Field(
         None, description="Device associated with this line"
     )
     data_used_gb: float = Field(
@@ -85,19 +85,19 @@ class Line(BaseModelNoExtra):
     roaming_enabled: bool = Field(
         False, description="Whether international roaming is enabled for this line"
     )
-    contract_end_date: Optional[datetime.date] = Field(
+    contract_end_date: datetime.date | None = Field(
         None,
         description="End date of the current contract, if applicable (format: YYYY-MM-DD, timezone: EST)",
     )
-    last_plan_change_date: Optional[datetime.date] = Field(
+    last_plan_change_date: datetime.date | None = Field(
         None,
         description="Date of the most recent plan change (format: YYYY-MM-DD, timezone: EST)",
     )
-    last_sim_replacement_date: Optional[datetime.date] = Field(
+    last_sim_replacement_date: datetime.date | None = Field(
         None,
         description="Date of the most recent SIM card replacement (format: YYYY-MM-DD, timezone: EST)",
     )
-    suspension_start_date: Optional[datetime.date] = Field(
+    suspension_start_date: datetime.date | None = Field(
         None,
         description="Start date of the current suspension period, if applicable (format: YYYY-MM-DD, timezone: EST)",
     )
@@ -141,7 +141,7 @@ class Bill(BaseModelNoExtra):
     due_date: datetime.date = Field(
         description="Date by which payment is due (format: YYYY-MM-DD, timezone: EST)"
     )
-    line_items: List[LineItem] = Field(
+    line_items: list[LineItem] = Field(
         default_factory=list,
         description="Individual charges, credits, and payments on this bill",
     )
@@ -186,20 +186,20 @@ class Customer(BaseModelNoExtra):
         AccountStatus.PENDING_VERIFICATION,
         description="Current status of the customer account",
     )
-    payment_methods: List[PaymentMethod] = Field(
+    payment_methods: list[PaymentMethod] = Field(
         default_factory=list, description="Stored payment methods for this customer"
     )
-    line_ids: List[str] = Field(
+    line_ids: list[str] = Field(
         default_factory=list, description="Phone/data lines owned by this customer"
     )
-    bill_ids: List[str] = Field(
+    bill_ids: list[str] = Field(
         default_factory=list, description="Bills associated with this customer"
     )
     created_at: datetime.datetime = Field(
         DEFAULT_START_DATE,
         description="Date and time when the customer account was created (format: YYYY-MM-DDTHH:MM:SS, timezone: EST)",
     )
-    last_extension_date: Optional[datetime.date] = Field(
+    last_extension_date: datetime.date | None = Field(
         None,
         description="Date of the most recent payment extension (used for quarterly limit check) (format: YYYY-MM-DD, timezone: EST)",
     )
@@ -211,23 +211,23 @@ class Customer(BaseModelNoExtra):
 class TelecomDB(DB):
     """Database interface for telecom domain."""
 
-    plans: List[Plan] = Field(
+    plans: list[Plan] = Field(
         default_factory=list, description="Available service plans"
     )
-    customers: List[Customer] = Field(
+    customers: list[Customer] = Field(
         default_factory=list, description="All customers in the system"
     )
-    lines: List[Line] = Field(
+    lines: list[Line] = Field(
         default_factory=list, description="All lines in the system"
     )
-    bills: List[Bill] = Field(
+    bills: list[Bill] = Field(
         default_factory=list, description="All bills in the system"
     )
-    devices: List[Device] = Field(
+    devices: list[Device] = Field(
         default_factory=list, description="All devices in the system"
     )
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get the statistics of the database."""
         num_plans = len(self.plans)
         num_customers = len(self.customers)

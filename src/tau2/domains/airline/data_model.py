@@ -30,7 +30,7 @@ class Name(BaseModel):
 
 class Address(BaseModel):
     address1: str = Field(description="Primary address line")
-    address2: Optional[str] = Field(
+    address2: str | None = Field(
         None, description="Secondary address line (optional)"
     )
     city: str = Field(description="City name")
@@ -166,7 +166,7 @@ class Flight(FlightBase):
     scheduled_arrival_time_est: str = Field(
         description="Scheduled arrival time in EST in the format HH:MM:SS, e.g 07:00:00"
     )
-    dates: Dict[str, FlightDateStatus] = Field(
+    dates: dict[str, FlightDateStatus] = Field(
         description="Flight status by date (YYYY-MM-DD)"
     )
 
@@ -181,7 +181,7 @@ class DirectFlight(FlightBase):
     scheduled_arrival_time_est: str = Field(
         description="Scheduled arrival time in EST in the format HH:MM:SS, e.g 07:00:00"
     )
-    date: Optional[str] = Field(
+    date: str | None = Field(
         description="Flight date in YYYY-MM-DD format", default=None
     )
     available_seats: AvailableSeats = Field(description="Available seats by class")
@@ -208,14 +208,14 @@ class User(BaseModel):
     dob: str = Field(
         description="User's date of birth in the format YYYY-MM-DD, e.g 1990-04-05"
     )
-    payment_methods: Dict[str, PaymentMethod] = Field(
+    payment_methods: dict[str, PaymentMethod] = Field(
         description="User's saved payment methods"
     )
-    saved_passengers: List[Passenger] = Field(
+    saved_passengers: list[Passenger] = Field(
         description="User's saved passenger information"
     )
     membership: MembershipLevel = Field(description="User's membership level")
-    reservations: List[str] = Field(description="List of user's reservation IDs")
+    reservations: list[str] = Field(description="List of user's reservation IDs")
 
 
 # Reservation Models
@@ -226,13 +226,13 @@ class Reservation(BaseModel):
     destination: str = Field(description="IATA code for trip destination")
     flight_type: FlightType = Field(description="Type of trip")
     cabin: CabinClass = Field(description="Selected cabin class")
-    flights: List[ReservationFlight] = Field(
+    flights: list[ReservationFlight] = Field(
         description="List of flights in the reservation"
     )
-    passengers: List[Passenger] = Field(
+    passengers: list[Passenger] = Field(
         description="List of passengers on the reservation"
     )
-    payment_history: List[Payment] = Field(
+    payment_history: list[Payment] = Field(
         description="History of payments for this reservation"
     )
     created_at: str = Field(
@@ -241,7 +241,7 @@ class Reservation(BaseModel):
     total_baggages: int = Field(description="Total number of bags in reservation")
     nonfree_baggages: int = Field(description="Number of paid bags in reservation")
     insurance: Insurance = Field(description="Whether travel insurance was purchased")
-    status: Optional[Literal["cancelled"]] = Field(
+    status: Literal["cancelled"] | None = Field(
         description="Status of the reservation", default=None
     )
 
@@ -249,13 +249,13 @@ class Reservation(BaseModel):
 class FlightDB(DB):
     """Database of all flights, users, and reservations."""
 
-    flights: Dict[str, Flight] = Field(
+    flights: dict[str, Flight] = Field(
         description="Dictionary of all flights indexed by flight number"
     )
-    users: Dict[str, User] = Field(
+    users: dict[str, User] = Field(
         description="Dictionary of all users indexed by user ID"
     )
-    reservations: Dict[str, Reservation] = Field(
+    reservations: dict[str, Reservation] = Field(
         description="Dictionary of all reservations indexed by reservation ID"
     )
 

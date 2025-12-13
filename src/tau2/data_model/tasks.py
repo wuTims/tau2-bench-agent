@@ -4,10 +4,9 @@ import json
 import textwrap
 import uuid
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
 
 from tau2.data_model.message import Message, ToolCall, ToolRequestor
 
@@ -22,11 +21,11 @@ class StructuredUserInstructions(BaseModel):
         str, Field(description="The reason for the user to call the agent.")
     ]
     known_info: Annotated[
-        Optional[str],
+        str | None,
         Field(description="Known information about the user.", default=None),
     ]
     unknown_info: Annotated[
-        Optional[str],
+        str | None,
         Field(description="Unknown information about the user.", default=None),
     ]
     task_instructions: Annotated[str, Field(description="Instructions for the User.")]
@@ -55,7 +54,7 @@ class UserScenario(BaseModel):
     """
 
     persona: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="User's persona. This information defines the user in general, not the specific situation they are in.",
             default=None,
@@ -84,18 +83,18 @@ class Description(BaseModel):
     """
 
     purpose: Annotated[
-        Optional[str],
+        str | None,
         Field(description="Explains what the scenario is testing.", default=None),
     ]
     relevant_policies: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="The part of the policy that is relevant to the scenario.",
             default=None,
         ),
     ]
     notes: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="Any additional information about the scenario that is not covered by the other fields.",
             default=None,
@@ -137,10 +136,10 @@ class Action(BaseModel):
     )
     name: str = Field(description="The name of the action.")
     arguments: dict = Field(description="The arguments for the action.")
-    info: Optional[str] = Field(
+    info: str | None = Field(
         description="Information about the action.", default=None
     )
-    compare_args: Optional[list[str]] = Field(
+    compare_args: list[str] | None = Field(
         description="The arguments to check in tool call. If None, will check all the arguments.",
         default=None,
     )
@@ -214,7 +213,7 @@ class EnvAssertion(EnvFunctionCall):
         bool, Field(default=True, description="The value to assert on.")
     ]
     message: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="A message to display to the user if the assertion fails.",
             default=None,
@@ -236,7 +235,7 @@ class EvaluationCriteria(BaseModel):
     """
 
     actions: Annotated[
-        Optional[list[Action]],
+        list[Action] | None,
         Field(
             description="The actions that the agent should take to complete the task.",
             default=None,
@@ -244,7 +243,7 @@ class EvaluationCriteria(BaseModel):
     ]
 
     env_assertions: Annotated[
-        Optional[list[EnvAssertion]],
+        list[EnvAssertion] | None,
         Field(
             description="List of assertions on the agent or user environment.",
             default=None,
@@ -252,7 +251,7 @@ class EvaluationCriteria(BaseModel):
     ]
 
     communicate_info: Annotated[  # TODO: Deprecate this
-        Optional[list[str]],
+        list[str] | None,
         Field(
             description="List of information that the agent should communicate to the user.",
             default=None,
@@ -260,7 +259,7 @@ class EvaluationCriteria(BaseModel):
     ]
 
     nl_assertions: Annotated[
-        Optional[list[str]],
+        list[str] | None,
         Field(
             description="List of assertions for the task, in natural language.",
             default=None,
@@ -333,11 +332,11 @@ class InitializationData(BaseModel):
     """
 
     agent_data: Annotated[
-        Optional[dict],
+        dict | None,
         Field(description="Agent env update data.", default=None),
     ]
     user_data: Annotated[
-        Optional[dict],
+        dict | None,
         Field(description="User env update data.", default=None),
     ]
 
@@ -349,17 +348,17 @@ class InitialState(BaseModel):
     """
 
     initialization_data: Annotated[
-        Optional[InitializationData],
+        InitializationData | None,
         Field(description="Initial env update data.", default=None),
     ]
     initialization_actions: Annotated[
-        Optional[list[EnvFunctionCall]],
+        list[EnvFunctionCall] | None,
         Field(
             description="Initial actions to be taken on the environment.", default=None
         ),
     ]
     message_history: Annotated[
-        Optional[list[Message]],
+        list[Message] | None,
         Field(
             default=None,
             description="Messages that have already been exchanged between the user, the agent and the environment. This will be used to set the initial state of the environment and of the orchestrator. Last messages must be from the user or the agent.",
@@ -403,7 +402,7 @@ class Task(BaseModel):
 
     id: str = Field(description="The unique identifier for the task.")
     description: Annotated[
-        Optional[Description],
+        Description | None,
         Field(
             description="Description of the task. This can be sent to the evaluator.",
             default=None,
@@ -416,21 +415,21 @@ class Task(BaseModel):
         ),
     ]
     ticket: Annotated[
-        Optional[str],
+        str | None,
         Field(
             description="Task in ticket format for solo agent solving.",
             default=None,
         ),
     ]
     initial_state: Annotated[
-        Optional[InitialState],
+        InitialState | None,
         Field(
             description="Initial state of the task. This will be used to set the initial state of the environment and of the orchestrator.",
             default=None,
         ),
     ]
     evaluation_criteria: Annotated[
-        Optional[EvaluationCriteria],
+        EvaluationCriteria | None,
         Field(
             description="Evaluation criteria for the task. This will be sent to the evaluator.",
             default=None,
@@ -464,9 +463,9 @@ def make_task_id() -> str:
 def make_task(
     user_instructions: str,
     eval_criteria: EvaluationCriteria,
-    initialization_data: Optional[InitializationData] = None,
-    initialization_actions: Optional[list[EnvFunctionCall]] = None,
-    message_history: Optional[list[Message]] = None,
+    initialization_data: InitializationData | None = None,
+    initialization_actions: list[EnvFunctionCall] | None = None,
+    message_history: list[Message] | None = None,
 ) -> Task:
     """
     Make a task from a user instruction, an evaluation criteria and a message history.

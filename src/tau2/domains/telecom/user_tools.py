@@ -158,7 +158,7 @@ class TelecomUserTools(ToolKitBase):
             lines.append(f"Connected Wi-Fi Network: {status['wifi_ssid']}")
         return "\n".join(lines)
 
-    def _check_network_status(self) -> Dict[str, Any]:
+    def _check_network_status(self) -> dict[str, Any]:
         """
         Returns a dictionary summarizing key network-related statuses.
         Useful for quick diagnosis by an agent.
@@ -187,7 +187,7 @@ class TelecomUserTools(ToolKitBase):
 
     @is_tool(ToolType.WRITE)
     def set_network_mode_preference(
-        self, mode: Union[NetworkModePreference, str]
+        self, mode: NetworkModePreference | str
     ) -> str:
         """Changes the type of cellular network your phone prefers to connect to (e.g., 5G, LTE/4G, 3G). Higher-speed networks (LTE/5G) provide faster data but may use more battery."""
         valid_mode = self._set_network_mode_preference(mode)
@@ -197,8 +197,8 @@ class TelecomUserTools(ToolKitBase):
         return f"{status_update}\nStatus Bar: {self._check_status_bar()}"
 
     def _set_network_mode_preference(
-        self, mode: Union[NetworkModePreference, str]
-    ) -> Optional[NetworkModePreference]:
+        self, mode: NetworkModePreference | str
+    ) -> NetworkModePreference | None:
         """Sets the preferred network mode.
         This will trigger a network search.
         """
@@ -269,7 +269,7 @@ class TelecomUserTools(ToolKitBase):
 
         return f"Speed Test Result: {speed_mbps:.2f} Mbps ({description}). {advice}"
 
-    def _run_speed_test(self) -> Tuple[Optional[float], Optional[str]]:
+    def _run_speed_test(self) -> tuple[float | None, str | None]:
         """
         Simulates running a speed test for mobile data based on current network conditions.
         Returns a tuple: (speed_mbps, description).
@@ -537,7 +537,7 @@ class TelecomUserTools(ToolKitBase):
             lines.append("Data Saver mode is OFF.")
         return "\n".join(lines)
 
-    def _check_data_restriction_status(self) -> Dict[str, bool]:
+    def _check_data_restriction_status(self) -> dict[str, bool]:
         """Checks global data saving/restriction settings."""
         return {
             "data_saver_mode": self.device.data_saver_mode,
@@ -588,7 +588,7 @@ class TelecomUserTools(ToolKitBase):
         return self.device.active_apn_settings.model_copy(deep=True)
 
     @is_tool(ToolType.WRITE)
-    def set_apn_settings(self, apn_settings: Union[APNSettings, dict]) -> str:
+    def set_apn_settings(self, apn_settings: APNSettings | dict) -> str:
         """Sets the APN settings for the phone."""
         if isinstance(apn_settings, dict):
             apn_settings = APNSettings(**apn_settings)
@@ -635,10 +635,9 @@ class TelecomUserTools(ToolKitBase):
             return "Wi-Fi is turned OFF."
         if status["connected"]:
             return f"Wi-Fi is ON and connected to '{status['ssid']}'. Signal strength: {status['signal_strength'].value}."
-        else:
-            return "Wi-Fi is ON but not connected to any network."
+        return "Wi-Fi is ON but not connected to any network."
 
-    def _check_wifi_status(self) -> Dict[str, Any]:
+    def _check_wifi_status(self) -> dict[str, Any]:
         """Returns the current Wi-Fi status details."""
         return {
             "enabled": self.device.wifi_enabled,
@@ -658,7 +657,7 @@ class TelecomUserTools(ToolKitBase):
         status_update = f"Wi-Fi is now {'ON' if new_state else 'OFF'}."
         return f"{status_update}\nStatus Bar: {self._check_status_bar()}"
 
-    def _toggle_wifi(self) -> Optional[bool]:
+    def _toggle_wifi(self) -> bool | None:
         """Toggles the Wi-Fi radio. Returns the new state."""
         if self.device.airplane_mode:
             return None
@@ -680,7 +679,7 @@ class TelecomUserTools(ToolKitBase):
         # MMS preference might be too technical, keep it simple
         return f"Wi-Fi Calling is currently turned {enabled_str}."
 
-    def _check_wifi_calling_status(self) -> Dict[str, bool]:
+    def _check_wifi_calling_status(self) -> dict[str, bool]:
         """Returns the status of Wi-Fi Calling settings."""
         return {
             "enabled": self.device.wifi_calling_enabled,
@@ -703,7 +702,7 @@ class TelecomUserTools(ToolKitBase):
         return new_state
 
     def set_wifi_calling(
-        self, enabled: bool, mms_over_wifi: Optional[bool] = None
+        self, enabled: bool, mms_over_wifi: bool | None = None
     ) -> str:
         """Set the Wi-Fi Calling setting. Set MMS over WIFI accordingly if provided."""
         if self.device.wifi_calling_enabled != enabled:
@@ -723,14 +722,12 @@ class TelecomUserTools(ToolKitBase):
             details = status["details"]
             if details:
                 return f"VPN is ON and connected. Details: {details}"
-            else:
-                return "VPN is ON and connected (no specific details available)."
-        elif status["enabled_setting"]:
+            return "VPN is ON and connected (no specific details available)."
+        if status["enabled_setting"]:
             return "VPN is turned ON in settings, but currently not connected."
-        else:
-            return "VPN is turned OFF."
+        return "VPN is turned OFF."
 
-    def _check_vpn_status(self) -> Dict[str, Any]:
+    def _check_vpn_status(self) -> dict[str, Any]:
         """Returns the current VPN status and details if connected."""
         return {
             "enabled_setting": self.device.vpn_enabled_setting,
@@ -755,7 +752,7 @@ class TelecomUserTools(ToolKitBase):
         )
         return f"{status_update}\nStatus Bar: {self._check_status_bar()}"
 
-    def _connect_vpn(self) -> Optional[bool]:
+    def _connect_vpn(self) -> bool | None:
         """Connects to a VPN (Virtual Private Network).
         This will set the VPN connection to the default details.
         """
@@ -825,7 +822,7 @@ class TelecomUserTools(ToolKitBase):
 
         return "\n".join(lines)
 
-    def _check_app_status(self, app_name: str) -> Optional[AppStatus]:
+    def _check_app_status(self, app_name: str) -> AppStatus | None:
         """Gets the full status object for a specific app."""
         app_status = self.device.app_statuses.get(app_name)
         if app_status:
@@ -847,10 +844,9 @@ class TelecomUserTools(ToolKitBase):
 
         if not allowed_perms:
             return f"App '{app_name}' currently has no permissions granted."
-        else:
-            return f"App '{app_name}' has permission for: {', '.join(allowed_perms)}."
+        return f"App '{app_name}' has permission for: {', '.join(allowed_perms)}."
 
-    def _check_app_permissions(self, app_name: str) -> Optional[AppPermissions]:
+    def _check_app_permissions(self, app_name: str) -> AppPermissions | None:
         """Gets the permissions status for a specific app."""
         app_status = self.device.app_statuses.get(app_name)
         if app_status:
@@ -869,7 +865,7 @@ class TelecomUserTools(ToolKitBase):
         result = "Success. " if success else "Error. "
         return f"{result}{message}\nStatus Bar: {self._check_status_bar()}"
 
-    def _grant_app_permission(self, app_name: str, permission: str) -> Tuple[bool, str]:
+    def _grant_app_permission(self, app_name: str, permission: str) -> tuple[bool, str]:
         """Grants a specific permission to an app."""
         app_status = self.device.app_statuses.get(app_name)
         permission = permission.lower()
@@ -882,11 +878,10 @@ class TelecomUserTools(ToolKitBase):
                 )
             setattr(app_status.permissions, permission, True)
             return True, f"Permission '{permission}' granted to app '{app_name}'."
-        else:
-            # Already checked in public method
-            return False, f"App '{app_name}' not found. Cannot grant permission."
+        # Already checked in public method
+        return False, f"App '{app_name}' not found. Cannot grant permission."
 
-    def remove_app_permission(self, app_name: str, permission: str) -> Tuple[bool, str]:
+    def remove_app_permission(self, app_name: str, permission: str) -> tuple[bool, str]:
         """Removes a specific permission from an app."""
         app_status = self.device.app_statuses.get(app_name)
         permission = permission.lower()
@@ -898,8 +893,7 @@ class TelecomUserTools(ToolKitBase):
                 )
             setattr(app_status.permissions, permission, False)
             return True, f"Permission '{permission}' removed from app '{app_name}'."
-        else:
-            return False, f"App '{app_name}' not found. Cannot remove permission."
+        return False, f"App '{app_name}' not found. Cannot remove permission."
 
     # --- MMS ---
     @is_tool(ToolType.READ)
@@ -908,8 +902,7 @@ class TelecomUserTools(ToolKitBase):
         result = self._can_send_mms()
         if result:
             return "Your messaging app can send MMS messages."
-        else:
-            return "Your messaging app cannot send MMS messages."
+        return "Your messaging app cannot send MMS messages."
 
     def _can_send_mms(self) -> bool:
         """Checks if the default messaging app can send MMS messages."""
@@ -1017,12 +1010,7 @@ class TelecomUserTools(ToolKitBase):
                     )
                 )
 
-        elif sim_status in [SimStatus.MISSING]:
-            self.device.network_connection_status = NetworkStatus.NO_SERVICE
-            self.device.network_technology_connected = NetworkTechnology.NONE
-            self.device.network_signal_strength = SignalStrength.NONE
-
-        elif sim_status in [SimStatus.LOCKED_PIN, SimStatus.LOCKED_PUK]:
+        elif sim_status in [SimStatus.MISSING] or sim_status in [SimStatus.LOCKED_PIN, SimStatus.LOCKED_PUK]:
             self.device.network_connection_status = NetworkStatus.NO_SERVICE
             self.device.network_technology_connected = NetworkTechnology.NONE
             self.device.network_signal_strength = SignalStrength.NONE
@@ -1061,7 +1049,7 @@ class TelecomUserTools(ToolKitBase):
             return "No payment request has been made."
         return f"You have a payment request for bill {payment_request.bill_id} of {payment_request.amount_due} USD."
 
-    def _check_payment_request(self) -> Optional[PaymentRequest]:
+    def _check_payment_request(self) -> PaymentRequest | None:
         """
         Checks if a payment request has been made.
         """
@@ -1079,7 +1067,7 @@ class TelecomUserTools(ToolKitBase):
             return "You do not have a payment request."
         return msg
 
-    def _make_payment(self) -> Optional[str]:
+    def _make_payment(self) -> str | None:
         """
         Makes a payment for a specific bill.
         """
@@ -1121,7 +1109,7 @@ class TelecomUserTools(ToolKitBase):
         return self.device.data_saver_mode == expected_status
 
     def assert_internet_speed(
-        self, expected_speed: float, expected_desc: Optional[str] = None
+        self, expected_speed: float, expected_desc: str | None = None
     ) -> bool:
         """
         Assert that the internet speed is as expected.
@@ -1130,8 +1118,7 @@ class TelecomUserTools(ToolKitBase):
         speed = speed or 0.0
         if expected_desc is None:
             return speed >= expected_speed
-        else:
-            return speed >= expected_speed and desc.lower() == expected_desc.lower()
+        return speed >= expected_speed and desc.lower() == expected_desc.lower()
 
     def assert_internet_not_excellent(self) -> bool:
         """

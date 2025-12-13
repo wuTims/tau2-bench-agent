@@ -112,7 +112,7 @@ class GymAgent(LocalAgent):
     STOP_FUNCTION_NAME = "done"
     STOP_TOKEN = "###STOP###"
 
-    def __init__(self, tools: List[Tool], domain_policy: str):
+    def __init__(self, tools: list[Tool], domain_policy: str):
         """
         Initialize the gym agent with tools and domain policy.
 
@@ -121,8 +121,8 @@ class GymAgent(LocalAgent):
             domain_policy: Policy string defining the agent's behavior in the domain
         """
         super().__init__(tools=tools, domain_policy=domain_policy)
-        self._observation: Optional[list[Message]] = None
-        self._next_action: Optional[AssistantMessage] = None
+        self._observation: list[Message] | None = None
+        self._next_action: AssistantMessage | None = None
         self._agent_turn_finished = threading.Event()
         self._lock = threading.Lock()
         self._agent_turn_finished.set()
@@ -156,8 +156,8 @@ class GymAgent(LocalAgent):
 
     def stop(
         self,
-        message: Optional[AssistantMessage] = None,
-        state: Optional[GymAgentState] = None,
+        message: AssistantMessage | None = None,
+        state: GymAgentState | None = None,
     ) -> None:
         """
         Stops the agent and finalizes the observation.
@@ -291,7 +291,7 @@ class GymAgent(LocalAgent):
 
     def get_init_state(
         self,
-        message_history: Optional[list[Message]] = None,
+        message_history: list[Message] | None = None,
     ) -> GymAgentState:
         """
         Create and return the initial state for the agent.
@@ -345,7 +345,7 @@ class GymUser(BaseUser):
     """
 
     def __init__(
-        self, tools: Optional[List[Tool]] = None, instructions: Optional[str] = None
+        self, tools: list[Tool] | None = None, instructions: str | None = None
     ):
         """
         Initialize the gym user with optional tools and instructions.
@@ -356,8 +356,8 @@ class GymUser(BaseUser):
         """
         super().__init__(instructions=instructions, llm=None, llm_args=None)
         self.tools = tools
-        self._observation: Optional[list[Message]] = None
-        self._next_action: Optional[UserMessage] = None
+        self._observation: list[Message] | None = None
+        self._next_action: UserMessage | None = None
         self._user_turn_finished = threading.Event()
         self._lock = threading.Lock()
         self._user_turn_finished.set()
@@ -375,8 +375,8 @@ class GymUser(BaseUser):
 
     def stop(
         self,
-        message: Optional[UserMessage] = None,
-        state: Optional[GymUserState] = None,
+        message: UserMessage | None = None,
+        state: GymUserState | None = None,
     ) -> None:
         """
         Stops the user and finalizes the observation.
@@ -479,7 +479,7 @@ class GymUser(BaseUser):
 
     def get_init_state(
         self,
-        message_history: Optional[list[Message]] = None,
+        message_history: list[Message] | None = None,
     ) -> GymUserState:
         """
         Create and return the initial state for the user.
@@ -572,8 +572,8 @@ class AgentGymEnv(gym.Env):
         task_id: str,
         max_steps: int = 100,
         solo_mode: bool = False,
-        user_llm: Optional[str] = None,
-        user_llm_args: Optional[dict] = None,
+        user_llm: str | None = None,
+        user_llm_args: dict | None = None,
         all_messages_as_observation: bool = False,
     ):
         """
@@ -594,16 +594,16 @@ class AgentGymEnv(gym.Env):
         self.all_messages_as_observation = all_messages_as_observation
 
         self._lock = threading.Lock()
-        self._agent: Optional[GymAgent] = None
-        self._user: Optional[UserSimulator] = None
-        self._orchestrator: Optional[Orchestrator] = None
-        self._orchestrator_thread: Optional[threading.Thread] = None
+        self._agent: GymAgent | None = None
+        self._user: UserSimulator | None = None
+        self._orchestrator: Orchestrator | None = None
+        self._orchestrator_thread: threading.Thread | None = None
         self._simulation_done = threading.Event()
-        self._simulation_run: Optional[SimulationRun] = None
+        self._simulation_run: SimulationRun | None = None
         self.observation_space = TauSpace()
         self.action_space = TauSpace()
 
-    def _get_tools(self) -> List[Tool]:
+    def _get_tools(self) -> list[Tool]:
         """
         Get the tools for the environment.
         """
@@ -626,7 +626,7 @@ class AgentGymEnv(gym.Env):
         logger.log(level, f"[{self.task_id}] {message}")
 
     def reset(
-        self, seed: Optional[int] = None, options: Optional[dict] = None
+        self, seed: int | None = None, options: dict | None = None
     ) -> tuple[str, dict]:
         """
         Reset the environment and start a new simulation.
@@ -1103,8 +1103,8 @@ class UserGymEnv(gym.Env):
         domain: str,
         task_id: str,
         max_steps: int = 100,
-        agent_llm: Optional[str] = None,
-        agent_llm_args: Optional[dict] = None,
+        agent_llm: str | None = None,
+        agent_llm_args: dict | None = None,
         all_messages_as_observation: bool = False,
     ):
         """
@@ -1128,16 +1128,16 @@ class UserGymEnv(gym.Env):
         self.all_messages_as_observation = all_messages_as_observation
 
         self._lock = threading.Lock()
-        self._user: Optional[GymUser] = None
-        self._agent: Optional[LLMAgent] = None
-        self._orchestrator: Optional[Orchestrator] = None
-        self._orchestrator_thread: Optional[threading.Thread] = None
+        self._user: GymUser | None = None
+        self._agent: LLMAgent | None = None
+        self._orchestrator: Orchestrator | None = None
+        self._orchestrator_thread: threading.Thread | None = None
         self._simulation_done = threading.Event()
-        self._simulation_run: Optional[SimulationRun] = None
+        self._simulation_run: SimulationRun | None = None
         self.observation_space = TauSpace()
         self.action_space = TauSpace()
 
-    def _get_tools(self) -> List[Tool]:
+    def _get_tools(self) -> list[Tool]:
         """
         Get the tools for the environment (agent tools).
         """
@@ -1145,7 +1145,7 @@ class UserGymEnv(gym.Env):
             raise ValueError("Agent not initialized. Call reset() first.")
         return self._agent.tools
 
-    def _get_user_tools(self) -> List[Tool]:
+    def _get_user_tools(self) -> list[Tool]:
         """
         Get the user tools for the environment.
         """
@@ -1171,7 +1171,7 @@ class UserGymEnv(gym.Env):
         logger.log(level, f"[UserGym:{self.task_id}] {message}")
 
     def reset(
-        self, seed: Optional[int] = None, options: Optional[dict] = None
+        self, seed: int | None = None, options: dict | None = None
     ) -> tuple[str, dict]:
         """
         Reset the environment and start a new simulation.

@@ -5,8 +5,9 @@ and modified to fit the needs of the project.
 
 import inspect
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from inspect import Signature
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from docstring_parser import parse
 from loguru import logger
@@ -22,7 +23,7 @@ class BaseTool(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def openai_schema(self) -> Dict[str, Any]:
+    def openai_schema(self) -> dict[str, Any]:
         """Get the OpenAI schema of the tool."""
         raise NotImplementedError
 
@@ -49,13 +50,13 @@ class Tool(BaseTool):
     """The parameters of the Tool."""
     returns: type[BaseModel] = Field(..., description="The return of the Tool")
     """The return of the Tool."""
-    raises: List[Dict[str, Optional[str]]] = Field(
+    raises: list[dict[str, str | None]] = Field(
         [], description="The exceptions raised by the Tool"
     )
     """The exceptions raised by the Tool."""
-    examples: List[str] = Field([], description="The examples of the Tool")
+    examples: list[str] = Field([], description="The examples of the Tool")
     """The examples of the Tool."""
-    info: Dict = Field({}, description="Additional information of the Tool")
+    info: dict = Field({}, description="Additional information of the Tool")
     """Additional information of the Tool."""
 
     def __init__(self, func: Callable, use_short_desc: bool = False, **predefined: Any):
@@ -80,11 +81,11 @@ class Tool(BaseTool):
 
     @classmethod
     def parse_data(
-        cls, sig: Signature, docstring: Optional[str], predefined: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        cls, sig: Signature, docstring: str | None, predefined: dict[str, Any]
+    ) -> dict[str, Any]:
         """Parse data from the signature and docstring of a function."""
         doc = parse(docstring or "")
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "short_desc": doc.short_description or "",
             "long_desc": doc.long_description or "",
         }

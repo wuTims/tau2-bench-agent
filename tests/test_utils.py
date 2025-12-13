@@ -18,7 +18,7 @@ def test_data_dir_environment_variable():
 
             importlib.reload(tau2.utils.utils)
 
-            assert tau2.utils.utils.DATA_DIR == temp_data_dir
+            assert temp_data_dir == tau2.utils.utils.DATA_DIR
 
 
 def test_data_dir_fallback_to_source():
@@ -36,4 +36,4 @@ def test_data_dir_fallback_to_source():
         # Calculate expected path from utils.py location
         utils_file = Path(tau2.utils.utils.__file__)
         expected_source_dir = utils_file.parents[3] / "data"
-        assert tau2.utils.utils.DATA_DIR == expected_source_dir
+        assert expected_source_dir == tau2.utils.utils.DATA_DIR

@@ -41,9 +41,9 @@ def make_config(
     max_errors: int,
     max_concurrency: int,
     num_trials: int,
-    num_tasks: Optional[int],
+    num_tasks: int | None,
     exp_dir: str,
-) -> Optional[RunConfig]:
+) -> RunConfig | None:
     """
     Creates a RunConfig object for a single experiment configuration.
 
@@ -166,8 +166,8 @@ def make_configs(
     max_concurrency: int,
     num_trials: int,
     exp_dir: str,
-    num_tasks: Optional[int] = None,
-) -> List[RunConfig]:
+    num_tasks: int | None = None,
+) -> list[RunConfig]:
     """
     Generates all possible experiment configurations based on the provided hyperparameters.
 
@@ -221,7 +221,7 @@ def make_configs(
     return configs
 
 
-def run_evals(configs: List[RunConfig]):
+def run_evals(configs: list[RunConfig]):
     """
     Executes a series of evaluation experiments using the provided configurations.
 
@@ -241,7 +241,7 @@ def run_evals(configs: List[RunConfig]):
         logger.info(f"Eval for {config.save_to} completed.")
 
 
-def get_simulation_results(exp_dir: Path) -> List[Tuple[dict, Results]]:
+def get_simulation_results(exp_dir: Path) -> list[tuple[dict, Results]]:
     """
     Get the data for the given experiment directory.
 

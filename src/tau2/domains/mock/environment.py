@@ -16,7 +16,7 @@ from tau2.utils import load_file
 
 
 def get_environment(
-    db: Optional[MockDB] = None, solo_mode: bool = False
+    db: MockDB | None = None, solo_mode: bool = False
 ) -> Environment:
     if db is None:
         db = MockDB.load(MOCK_DB_PATH)
@@ -25,7 +25,7 @@ def get_environment(
         policy_path = MOCK_POLICY_PATH
     else:
         policy_path = MOCK_POLICY_SOLO_PATH
-    with open(policy_path, "r") as fp:
+    with open(policy_path) as fp:
         policy = fp.read()
     env = Environment(
         domain_name="mock",
@@ -45,7 +45,7 @@ def get_environment(
 #     return [Task.model_validate(task) for task in tasks]
 
 
-def get_tasks(task_split_name: Optional[str] = None) -> list[Task]:
+def get_tasks(task_split_name: str | None = None) -> list[Task]:
     tasks = load_file(MOCK_TASK_SET_PATH)
     tasks = [Task.model_validate(task) for task in tasks]
     if task_split_name is None:
