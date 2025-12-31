@@ -1,0 +1,254 @@
+openapi: 3.1.0
+info:
+  title: tau2 Hybrid Agent Routing Schemas
+  version: 1.0.0
+  description: |
+    Schemas for the Tau2RouterAgent routing layer.
+    Defines the AgentBeats structured request format and routing types.
+
+components:
+  schemas:
+    # AgentBeats Structured Request Format
+    AgentBeatsRequest:
+      type: object
+      description: |
+        AgentBeats-format structured evaluation request.
+        When detected, bypasses LLM and routes directly to GymOrchestrator.
+      required:
+        - participants
+        - config
+      properties:
+        participants:
+          $ref: '#/components/schemas/Participants'
+        config:
+          $ref: '#/components/schemas/EvaluationConfig'
+
+    Participants:
+      type: object
+      description: Evaluation participants
+      required:
+        - agent
+      properties:
+        agent:
+          $ref: '#/components/schemas/AgentParticipant'
+
+    AgentParticipant:
+      type: object
+      description: Agent under test configuration
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: A2A endpoint URL of agent to evaluate
+          example: "http://my-agent:8001/a2a"
+        auth_token:
+          type: string
+          description: Optional bearer token for agent authentication
+        timeout:
+          type: integer
+          default: 300
+          minimum: 1
+          description: Request timeout in seconds
+
+    EvaluationConfig:
+      type: object
+      description: Evaluation parameters
+      required:
+        - domain
+      properties:
+        domain:
+          type: string
+          enum: [airline, retail, telecom, mock]
+          description: Evaluation domain
+        num_tasks:
+          type: integer
+          minimum: 1
+          description: Number of tasks to evaluate (null = all tasks in domain)
+        num_trials:
+          type: integer
+          default: 1
+          minimum: 1
+          description: Number of trials per task
+        task_ids:
+          type: array
+          items:
+            type: string
+          description: Specific task IDs to evaluate (overrides num_tasks)
+        user_llm:
+          type: string
+          default: "gpt-4o"
+          description: LLM for user simulator
+        user_llm_args:
+          type: object
+          additionalProperties: true
+          description: Additional LLM arguments (temperature, etc.)
+        max_steps:
+          type: integer
+          default: 100
+          minimum: 1
+          description: Maximum steps per task evaluation
+
+    # Routing Detection
+    InputType:
+      type: string
+      enum:
+        - structured
+        - natural_language
+      description: Detected input type for routing
+
+    # Task Results
+    TaskResult:
+      type: object
+      description: Result from evaluating a single task
+      required:
+        - task_id
+        - trial
+        - reward
+        - success
+      properties:
+        task_id:
+          type: string
+          description: Unique task identifier
+        trial:
+          type: integer
+          minimum: 1
+          description: Trial number
+        reward:
+          type: number
+          description: Task reward value
+        success:
+          type: boolean
+          description: Whether task succeeded
+        steps:
+          type: integer
+          minimum: 0
+          description: Number of steps taken
+        purpose:
+          type: string
+          description: Task purpose/description
+        error:
+          type: string
+          nullable: true
+          description: Error message if task failed
+
+    # Evaluation Summary
+    EvaluationSummary:
+      type: object
+      description: Aggregated evaluation results
+      required:
+        - evaluation_id
+        - domain
+        - status
+        - summary
+      properties:
+        evaluation_id:
+          type: string
+          pattern: '^eval-\d+-[a-z0-9]{6}$'
+          description: Unique evaluation identifier
+        domain:
+          type: string
+          description: Evaluation domain
+        agent_endpoint:
+          type: string
+          format: uri
+          description: Agent that was evaluated
+        status:
+          type: string
+          enum: [completed, failed]
+          description: Final evaluation status
+        summary:
+          type: object
+          properties:
+            total_simulations:
+              type: integer
+              description: Total simulations run (tasks * trials)
+            total_tasks:
+              type: integer
+              description: Number of unique tasks
+            successful_simulations:
+              type: integer
+              description: Number of successful simulations
+            success_rate:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Success rate (0.0 - 1.0)
+            avg_reward:
+              type: number
+              description: Average reward across all simulations
+            pass_hat_k:
+              type: object
+              additionalProperties:
+                type: number
+              description: Pass@k metrics for k=1,2,3,4,5
+        timing:
+          type: object
+          properties:
+            started_at:
+              type: string
+              format: date-time
+            completed_at:
+              type: string
+              format: date-time
+            duration_seconds:
+              type: number
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskResult'
+        error:
+          type: string
+          nullable: true
+          description: Error message if evaluation failed
+
+# Examples
+x-examples:
+  structured-request:
+    description: Example AgentBeats structured request
+    value:
+      participants:
+        agent:
+          url: "http://my-agent:8001/a2a"
+          timeout: 300
+      config:
+        domain: "airline"
+        num_tasks: 5
+        num_trials: 1
+        user_llm: "gpt-4o"
+
+  evaluation-summary:
+    description: Example evaluation summary response
+    value:
+      evaluation_id: "eval-1734912000-abc123"
+      domain: "airline"
+      agent_endpoint: "http://my-agent:8001/a2a"
+      status: "completed"
+      summary:
+        total_simulations: 5
+        total_tasks: 5
+        successful_simulations: 4
+        success_rate: 0.8
+        avg_reward: 0.76
+        pass_hat_k:
+          1: 0.8
+          2: 0.85
+          3: 0.9
+      timing:
+        started_at: "2025-12-22T10:00:00Z"
+        completed_at: "2025-12-22T10:05:30Z"
+        duration_seconds: 330
+      tasks:
+        - task_id: "airline_001"
+          trial: 1
+          reward: 1.0
+          success: true
+          steps: 12
+          purpose: "Book a flight"
+        - task_id: "airline_002"
+          trial: 1
+          reward: 0.0
+          success: false
+          steps: 25
+          purpose: "Cancel reservation"

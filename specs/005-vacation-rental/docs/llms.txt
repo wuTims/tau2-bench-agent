@@ -1,0 +1,30 @@
+# Vacation Rental Platform Help Documentation
+# llms.txt - Contextualized summaries for LLM reference
+
+## Airbnb Help Articles
+
+https://www.airbnb.com/help/article/1566 | Change service/experience reservation date or time | Guests can rebook within free cancellation period or request changes outside it; hosts must accept change requests outside cancellation window; price may vary based on new date; if host rejects and guest cancels, no refund unless cancellation policy exceptions apply.
+
+https://www.airbnb.com/help/article/2278 | Refund Policy for Services and Experiences | Effective May 13, 2025; covers "Covered Issues" including host cancellation, host 15+ min late/no-show, service differs substantially from description, host unprepared, or host damages guest venue; guests must report within 72 hours with evidence; full refund for host cancellation, partial/full for other issues based on severity.
+
+https://www.airbnb.com/help/article/1593 | Guest cancellation policy info for services/experiences | Most services have 1-day (24hr) free cancellation; some have 3-day (72hr) policy; cancellation deadlines based on local time zone; exceptions for Major Disruptive Events, material differences from description, or issues at Airbnb home venue; poor weather not covered unless prevents activity entirely.
+
+https://www.airbnb.com/help/article/2039 | Host Cancellation Policy for Services and Experiences | Hosts who cancel confirmed reservations face 20% cancellation fee based on booking value; additional consequences include calendar blocking and potential platform removal for repeat offenders; fees waived for Major Disruptive Events or valid reasons (health issues, guest disruption, unfavorable reviews, venue damage, agreed date changes).
+
+https://www.airbnb.com/help/article/1320 | Major Disruptive Events Policy | Applies to homes, services, experiences; covers declared health emergencies, government travel restrictions, military actions/terrorism, utility outages, unforeseeable natural disasters; NOT covered: endemic diseases, non-binding advisories, foreseeable weather, COVID-19; guests get full refund, hosts can cancel without penalty but calendar blocked.
+
+https://www.airbnb.com/help/article/2895 | Ground rules for home hosts | Hosts must maintain: accurate listings, honor reservations/refunds, timely communication, cleanliness; response expectations vary by trip stage (3 days if 5+ days out, 1 hour close to check-in during daytime); violations can result in warnings, suspension, removal, Superhost loss, payout adjustments; guests should communicate with host first, document issues, contact Airbnb if unresolved.
+
+https://www.airbnb.com/help/article/2868 | Rebooking and refund policy for homes | Effective Feb 6, 2025; host cancellation = full guest refund + rebooking help; Reservation Issues include: no access, uninhabitable conditions, significantly different from listing, undisclosed persons/pets, non-functioning amenities; must report within 72 hours with evidence; refund amount based on severity and impact; does not apply to experiences/services.
+
+https://www.airbnb.com/help/article/1237 | Identity verification on Airbnb | All hosts, co-hosts, booking guests must verify identity; process uses legal name, address, phone, government ID, and/or selfie; verification usually under 1 hour; guests have 12 hours to complete (1 hour if check-in within 12 hours); hosts must verify before listing published; re-verification may be required after account changes; verified badge displayed on profile.
+
+https://www.airbnb.com/resources/hosting-homes/a/make-check-in-and-checkout-easy-662 | Check-in/checkout best practices for hosts | Tips: install smart locks, outdoor lighting, clear signage; use Arrival Guide for check-in method, directions, wifi, house manual; add photos/video of entry process; send scheduled welcome message; practice inclusive hospitality; checkout instructions should be simple; send thank-you message after stay; consider handling turnover chores yourself for better reviews.
+
+## VRBO Help Articles
+
+https://www.vrbo.com/helpcenter/?product=Vacation%20Rentals&productId=vacation-rentals&articleId=40039 | VRBO cancellation policies for guests | Policies vary by property; check listing's Policies section before booking; options include: No refund (non-refundable), Strict-60 day (100% if 60+ days, none after), Firm-60 day (100% if 60+ days, 50% at 30-60 days), Moderate-30 day (100% if 30+ days, 50% at 14-30 days), Relaxed-14 day (100% if 14+ days, 50% at 7-14 days); all cancellations by 11:59pm property time zone; refunds based on amount paid or total payable.
+
+https://www.vrbo.com/helpcenter/?product=Vacation%20Rentals&productId=vacation-rentals&articleId=40015 | VRBO cancellation policy options for hosts | Five policies: Relaxed (recommended), Moderate, Firm, Strict, No refund; cancellation policy supersedes rental agreement; custom refunds allowed (must equal or exceed policy minimum); seasonal policies available for specific check-in date ranges; IPMs get refund of amount payable, platform partners get refund of amount paid; changes don't apply to existing bookings.
+
+https://www.vrbo.com/helpcenter/?product=Vacation%20Rentals&productId=vacation-rentals&articleId=40055 | VRBO Extenuating Circumstances Policy | Activated for broad-scale travel disruptions; covered: natural disasters, declared health emergencies, wars/terrorism, government travel restrictions, infrastructure outages from covered events, unexpected visa changes, hurricanes Cat 3+ (auto-activated 24hr before landfall); NOT covered: seasonal weather (hurricanes in season, winter storms), endemic diseases, COVID-19, personal circumstances, transport disruptions unrelated to covered events; hosts must provide full refund for pre-check-in, partial for ongoing stays.
