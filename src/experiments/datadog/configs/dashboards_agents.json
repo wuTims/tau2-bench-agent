@@ -58,7 +58,81 @@
           "layout_type": "ordered",
           "widgets": [
             {
-              "id": "leaderboard-hard-expert",
+              "id": "leaderboard-easy",
+              "definition": {
+                "type": "toplist",
+                "title": "Easy Tasks",
+                "title_size": "16",
+                "title_align": "left",
+                "requests": [
+                  {
+                    "q": "top(avg:tau2.task.reward{$domain,$env,$agent_endpoint,difficulty:easy} by {agent_endpoint} * 100, 10, 'mean', 'desc')",
+                    "conditional_formats": [
+                      {
+                        "comparator": ">=",
+                        "value": 80,
+                        "palette": "white_on_green"
+                      },
+                      {
+                        "comparator": ">=",
+                        "value": 60,
+                        "palette": "white_on_yellow"
+                      },
+                      {
+                        "comparator": "<",
+                        "value": 60,
+                        "palette": "white_on_red"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "layout": {
+                "x": 0,
+                "y": 0,
+                "width": 3,
+                "height": 4
+              }
+            },
+            {
+              "id": "leaderboard-medium",
+              "definition": {
+                "type": "toplist",
+                "title": "Medium Tasks",
+                "title_size": "16",
+                "title_align": "left",
+                "requests": [
+                  {
+                    "q": "top(avg:tau2.task.reward{$domain,$env,$agent_endpoint,difficulty:medium} by {agent_endpoint} * 100, 10, 'mean', 'desc')",
+                    "conditional_formats": [
+                      {
+                        "comparator": ">=",
+                        "value": 60,
+                        "palette": "white_on_green"
+                      },
+                      {
+                        "comparator": ">=",
+                        "value": 40,
+                        "palette": "white_on_yellow"
+                      },
+                      {
+                        "comparator": "<",
+                        "value": 40,
+                        "palette": "white_on_red"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "layout": {
+                "x": 3,
+                "y": 0,
+                "width": 3,
+                "height": 4
+              }
+            },
+            {
+              "id": "leaderboard-hard",
               "definition": {
                 "type": "toplist",
                 "title": "Hard Tasks",
@@ -88,36 +162,36 @@
                 ]
               },
               "layout": {
-                "x": 0,
+                "x": 6,
                 "y": 0,
-                "width": 4,
+                "width": 3,
                 "height": 4
               }
             },
             {
-              "id": "leaderboard-easy-medium",
+              "id": "leaderboard-expert",
               "definition": {
                 "type": "toplist",
-                "title": "Easy Tasks (Baseline)",
+                "title": "Expert Tasks",
                 "title_size": "16",
                 "title_align": "left",
                 "requests": [
                   {
-                    "q": "top(avg:tau2.task.reward{$domain,$env,$agent_endpoint,difficulty:easy} by {agent_endpoint} * 100, 10, 'mean', 'desc')",
+                    "q": "top(avg:tau2.task.reward{$domain,$env,$agent_endpoint,difficulty:expert} by {agent_endpoint} * 100, 10, 'mean', 'desc')",
                     "conditional_formats": [
                       {
                         "comparator": ">=",
-                        "value": 80,
+                        "value": 30,
                         "palette": "white_on_green"
                       },
                       {
                         "comparator": ">=",
-                        "value": 60,
+                        "value": 15,
                         "palette": "white_on_yellow"
                       },
                       {
                         "comparator": "<",
-                        "value": 60,
+                        "value": 15,
                         "palette": "white_on_red"
                       }
                     ]
@@ -125,17 +199,33 @@
                 ]
               },
               "layout": {
-                "x": 4,
+                "x": 9,
                 "y": 0,
-                "width": 4,
+                "width": 3,
                 "height": 4
               }
-            },
+            }
+          ]
+        },
+        "layout": {
+          "x": 0,
+          "y": 1,
+          "width": 12,
+          "height": 5
+        }
+      },
+      {
+        "id": "tau-metrics-group",
+        "definition": {
+          "type": "group",
+          "title": "tau2 Benchmark Metrics (Pass^k)",
+          "layout_type": "ordered",
+          "widgets": [
             {
-              "id": "leaderboard-pass-hat-1",
+              "id": "pass-hat-1",
               "definition": {
                 "type": "toplist",
-                "title": "Pass^1 (tau2 Metric)",
+                "title": "Pass^1 by Agent (%)",
                 "title_size": "16",
                 "title_align": "left",
                 "requests": [
@@ -162,19 +252,130 @@
                 ]
               },
               "layout": {
-                "x": 8,
+                "x": 0,
                 "y": 0,
-                "width": 4,
-                "height": 4
+                "width": 3,
+                "height": 3
+              }
+            },
+            {
+              "id": "pass-hat-2",
+              "definition": {
+                "type": "toplist",
+                "title": "Pass^2 by Agent (%)",
+                "title_size": "16",
+                "title_align": "left",
+                "requests": [
+                  {
+                    "q": "top(avg:tau2.evaluation.pass_hat_2{$domain,$env,$agent_endpoint} by {agent_endpoint}, 10, 'mean', 'desc')",
+                    "conditional_formats": [
+                      {
+                        "comparator": ">=",
+                        "value": 80,
+                        "palette": "white_on_green"
+                      },
+                      {
+                        "comparator": ">=",
+                        "value": 60,
+                        "palette": "white_on_yellow"
+                      },
+                      {
+                        "comparator": "<",
+                        "value": 60,
+                        "palette": "white_on_red"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "layout": {
+                "x": 3,
+                "y": 0,
+                "width": 3,
+                "height": 3
+              }
+            },
+            {
+              "id": "pass-hat-4",
+              "definition": {
+                "type": "toplist",
+                "title": "Pass^4 by Agent (%)",
+                "title_size": "16",
+                "title_align": "left",
+                "requests": [
+                  {
+                    "q": "top(avg:tau2.evaluation.pass_hat_4{$domain,$env,$agent_endpoint} by {agent_endpoint}, 10, 'mean', 'desc')",
+                    "conditional_formats": [
+                      {
+                        "comparator": ">=",
+                        "value": 90,
+                        "palette": "white_on_green"
+                      },
+                      {
+                        "comparator": ">=",
+                        "value": 70,
+                        "palette": "white_on_yellow"
+                      },
+                      {
+                        "comparator": "<",
+                        "value": 70,
+                        "palette": "white_on_red"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "layout": {
+                "x": 6,
+                "y": 0,
+                "width": 3,
+                "height": 3
+              }
+            },
+            {
+              "id": "pass-rate-overall",
+              "definition": {
+                "type": "toplist",
+                "title": "Overall Pass Rate (%)",
+                "title_size": "16",
+                "title_align": "left",
+                "requests": [
+                  {
+                    "q": "top(avg:tau2.evaluation.pass_rate{$domain,$env,$agent_endpoint} by {agent_endpoint}, 10, 'mean', 'desc')",
+                    "conditional_formats": [
+                      {
+                        "comparator": ">=",
+                        "value": 70,
+                        "palette": "white_on_green"
+                      },
+                      {
+                        "comparator": ">=",
+                        "value": 50,
+                        "palette": "white_on_yellow"
+                      },
+                      {
+                        "comparator": "<",
+                        "value": 50,
+                        "palette": "white_on_red"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "layout": {
+                "x": 9,
+                "y": 0,
+                "width": 3,
+                "height": 3
               }
             }
           ]
         },
         "layout": {
           "x": 0,
-          "y": 1,
+          "y": 6,
           "width": 12,
-          "height": 5
+          "height": 4
         }
       },
       {
