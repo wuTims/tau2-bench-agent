@@ -35,12 +35,12 @@ Use this JSON when configuring the green agent's leaderboard queries on AgentBea
 [
   {
     "name": "Overall Performance",
-    "query": "SELECT results.participants.agent AS id, ROUND(results.summary.pass_rate * 100, 1) AS \"Pass Rate %\", results.summary.total_tasks AS \"Tasks\", results.summary.successful_simulations AS \"Passed\", ROUND(results.summary.avg_reward, 2) AS \"Avg Reward\" FROM results ORDER BY \"Pass Rate %\" DESC"
+    "query": "SELECT json_extract_string(t.participants::json, '$.' || json_keys(t.participants::json)[1]) AS id, ROUND(t.results[1].summary.avg_reward * 100, 1) AS \"Pass Rate %\", t.results[1].summary.total_tasks AS \"Tasks\", t.results[1].summary.successful_simulations AS \"Passed\", ROUND(t.results[1].summary.avg_reward, 2) AS \"Avg Reward\" FROM results t ORDER BY \"Pass Rate %\" DESC"
   }
 ]
 ```
 
-> **Note**: This query matches our results.json schema. May need adjustment after first run if agentbeats-client wraps the output differently.
+> **Note**: This query uses dynamic JSON key extraction because AgentBeats stores participant IDs using the agent's **registered name** on the platform as the key (not the role name from scenario.toml). The `results` field is an array containing evaluation data, so we access `t.results[1].summary` (DuckDB uses 1-based indexing).
 
 ---
 
