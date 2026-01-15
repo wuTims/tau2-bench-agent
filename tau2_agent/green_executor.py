@@ -33,7 +33,8 @@ class EvalConfig(BaseModel):
         domain: Evaluation domain (airline, retail, telecom, mock).
         num_tasks: Number of tasks to evaluate (None = all tasks).
         num_trials: Number of trials per task.
-        task_ids: Optional list of specific task IDs to run.
+        task_split: Task split to use (train, test, eval, base). Default: base.
+        task_ids: Optional list of specific task IDs to run (overrides task_split).
 
     Note:
         Uses extra='forbid' to reject unknown fields and catch typos
@@ -45,6 +46,7 @@ class EvalConfig(BaseModel):
     domain: str
     num_tasks: int | None = None
     num_trials: int = 1
+    task_split: str | None = None
     task_ids: list[str] | None = None
 
 
@@ -218,6 +220,8 @@ class Tau2GreenAgent:
         }
         if request.config.num_tasks is not None:
             args["num_tasks"] = request.config.num_tasks
+        if request.config.task_split:
+            args["task_split"] = request.config.task_split
         if request.config.task_ids:
             args["task_ids"] = request.config.task_ids
 
