@@ -80,6 +80,7 @@ class A2AAgent(LocalAgent):
         Args:
             a2a_content: The message content to send (already translated to A2A format)
             context_id: Optional context ID for multi-turn conversations
+            state: Current agent state for accessing request count metadata
 
         Returns:
             Tuple of (response_content, new_context_id) from the A2A agent
@@ -186,18 +187,18 @@ class A2AAgent(LocalAgent):
 
         # Async/sync bridge: Run async HTTP operations in synchronous context
         async def _async_generate():
-            # Translate tau2 message to A2A content
-            # Include tools for user messages so agent knows what's available
-            """
-            Send the current tau2 message to the remote A2A agent and return the produced assistant message along with an updated A2AAgentState.
-            
-            The function translates the provided tau2 message into A2A format (including available tools for user messages), sends it to the remote agent via the internal A2A client, translates the agent's A2A response into a tau2 AssistantMessage, and constructs a new state that appends the turn to the conversation history, preserves or updates the context_id returned by the agent, and increments the request count.
-            
-            Returns:
-                tuple[AssistantMessage, A2AAgentState]: The assistant message generated from the A2A response and the updated agent state.
-            """
+            # Determine what context to include based on message type and conversation state
             tools_for_translation = self.tools if message.role == "user" else None
-            a2a_content = tau2_to_a2a_message_content(message, tools=tools_for_translation)
+            is_first_message = state.request_count == 0
+
+            policy_for_translation = self.domain_policy if is_first_message else None
+
+            a2a_content = tau2_to_a2a_message_content(
+                message,
+                tools=tools_for_translation,
+                domain_policy=policy_for_translation,
+                is_first_message=is_first_message,
+            )
 
             logger.debug(
                 "Sending message to A2A agent",
@@ -253,10 +254,8 @@ class A2AAgent(LocalAgent):
                     request_count=state.request_count,
                 )
 
-            # Translate A2A response to tau2 AssistantMessage
             assistant_msg = a2a_to_tau2_assistant_message(response_content)
 
-            # Update state
             new_conversation_history = state.conversation_history + [
                 message,
                 assistant_msg,
@@ -298,7 +297,6 @@ class A2AAgent(LocalAgent):
         """
         import asyncio
 
-        # Close HTTP client if needed
         async def _async_close():
             await self.client.close()
 

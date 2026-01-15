@@ -1,6 +1,7 @@
 """Message translation utilities between tau2-bench and A2A protocol formats."""
 
 import json
+import re
 import uuid
 
 from loguru import logger
@@ -13,6 +14,14 @@ from tau2.data_model.message import (
     UserMessage,
 )
 from tau2.environment.tool import Tool
+
+A2A_AGENT_INSTRUCTION = """You are a customer service agent that helps the user according to the <policy> provided below.
+In each turn you can either:
+- Send a message to the user.
+- Make a tool call.
+You cannot do both at the same time.
+
+Try to be helpful and always follow the policy.""".strip()
 
 
 def format_tools_as_text(tools: list[Tool]) -> str:
@@ -38,29 +47,24 @@ def format_tools_as_text(tools: list[Tool]) -> str:
     lines = ["<available_tools>"]
 
     for tool in tools:
-        # Get OpenAI schema format
         schema = tool.openai_schema
         func_schema = schema.get("function", {})
         name = func_schema.get("name", tool.name)
         description = func_schema.get("description", "No description available")
         parameters = func_schema.get("parameters", {})
 
-        # Build parameter signature
         param_parts = []
         properties = parameters.get("properties", {})
         required = parameters.get("required", [])
 
         for param_name, param_schema in properties.items():
             param_type = param_schema.get("type", "any")
-            is_required = param_name in required
             param_parts.append(f"{param_name}: {param_type}")
 
-        # Format tool signature
         signature = f"{name}({', '.join(param_parts)})"
         lines.append(f"- {signature}")
         lines.append(f"  Description: {description}")
 
-        # Add parameter details
         if properties:
             lines.append("  Parameters:")
             for param_name, param_schema in properties.items():
@@ -72,13 +76,9 @@ def format_tools_as_text(tools: list[Tool]) -> str:
                     f"    - {param_name} ({param_type}, {required_str}): {param_desc}"
                 )
 
-        lines.append("")  # Empty line between tools
+        lines.append("")
 
     lines.append("</available_tools>")
-    lines.append("")
-    lines.append(
-        'To use a tool, respond with JSON: {"tool_call": {"name": "tool_name", "arguments": {"param1": "value"}}}'
-    )
 
     tool_text = "\n".join(lines)
 
@@ -92,9 +92,59 @@ def format_tools_as_text(tools: list[Tool]) -> str:
     return tool_text
 
 
+def format_system_context(
+    domain_policy: str,
+    tools: list[Tool] | None = None,
+) -> str:
+    """
+    Format the system context for A2A agents.
+
+    Args:
+        domain_policy: The domain-specific policy text
+        tools: Optional list of tools available to the agent
+
+    Returns:
+        Formatted system context string with instructions, policy, and tools
+    """
+    parts = []
+
+    parts.append("<instructions>")
+    parts.append(A2A_AGENT_INSTRUCTION)
+    parts.append("</instructions>")
+
+    parts.append("")
+    parts.append("<policy>")
+    parts.append(domain_policy)
+    parts.append("</policy>")
+
+    # Tools section
+    if tools:
+        parts.append("")
+        parts.append(format_tools_as_text(tools))
+
+    # Tool call format instruction
+    parts.append("")
+    parts.append(
+        'To use a tool, respond with JSON: {"tool_call": {"name": "tool_name", "arguments": {"param1": "value"}}}'
+    )
+
+    context = "\n".join(parts)
+
+    logger.trace(
+        "Formatted system context for A2A agent",
+        context_length=len(context),
+        has_policy=bool(domain_policy),
+        num_tools=len(tools) if tools else 0,
+    )
+
+    return context
+
+
 def tau2_to_a2a_message_content(
     message: UserMessage | AssistantMessage | ToolMessage,
     tools: list[Tool] | None = None,
+    domain_policy: str | None = None,
+    is_first_message: bool = False,
 ) -> str:
     """
     Convert tau2 message to A2A text content.
@@ -102,27 +152,44 @@ def tau2_to_a2a_message_content(
     Args:
         message: tau2 message object
         tools: Optional list of tools to include in user messages
+        domain_policy: Optional domain policy to include (typically on first message)
+        is_first_message: Whether this is the first message in the conversation
 
     Returns:
         Text content for A2A message
     """
     if isinstance(message, UserMessage):
-        # User messages: include content and optionally tool descriptions
+        # User messages: include content and system context
         content_parts = []
+
+        if is_first_message and domain_policy:
+            logger.debug(
+                "Including system context in first user message",
+                has_policy=bool(domain_policy),
+                num_tools=len(tools) if tools else 0,
+            )
+            system_context = format_system_context(domain_policy, tools)
+            content_parts.append(system_context)
+            content_parts.append("")  # Separator
+
         if message.content:
             content_parts.append(message.content)
 
-        # Add tool descriptions for user messages (system context)
-        if tools:
+        # On subsequent messages, just include tools (agent may need reminder)
+        if not is_first_message and tools:
             logger.debug(
                 "Including tool descriptions in user message",
                 num_tools=len(tools),
             )
             tool_text = format_tools_as_text(tools)
             if tool_text:
-                content_parts.append("\n" + tool_text)
+                content_parts.append("")
+                content_parts.append(tool_text)
+                content_parts.append(
+                    'To use a tool, respond with JSON: {"tool_call": {"name": "tool_name", "arguments": {"param1": "value"}}}'
+                )
 
-        return "\n\n".join(content_parts)
+        return "\n".join(content_parts)
 
     if isinstance(message, AssistantMessage):
         # Assistant messages: either text content or tool calls
@@ -154,6 +221,36 @@ def tau2_to_a2a_message_content(
     return f"{prefix} {message.content or ''}"
 
 
+def _extract_json_from_markdown(content: str) -> str:
+    """
+    Extract JSON content from markdown code blocks if present.
+
+    Handles common formats from LLMs:
+    - ```json\n{...}\n```
+    - ```\n{...}\n```
+    - Raw JSON without code blocks
+
+    Args:
+        content: Raw content that may contain markdown code blocks
+
+    Returns:
+        Extracted JSON string, or original content if no code block found
+    """
+    # Pattern to match JSON in code blocks (with or without language specifier)
+    # Matches: ```json\n{...}\n``` or ```\n{...}\n```
+    code_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
+    match = re.search(code_block_pattern, content.strip())
+    if match:
+        extracted = match.group(1).strip()
+        logger.trace(
+            "Extracted JSON from markdown code block",
+            original_length=len(content),
+            extracted_length=len(extracted),
+        )
+        return extracted
+    return content.strip()
+
+
 def parse_a2a_tool_calls(content: str) -> list[ToolCall] | None:
     """
     Parse tool calls from A2A agent response content.
@@ -161,6 +258,9 @@ def parse_a2a_tool_calls(content: str) -> list[ToolCall] | None:
     Looks for JSON-formatted tool calls in the response:
     - Single: {"tool_call": {"name": "...", "arguments": {...}}}
     - Multiple: {"tool_calls": [{...}, {...}]}
+
+    Also handles JSON wrapped in markdown code blocks:
+    - ```json\n{"tool_call": {...}}\n```
 
     Args:
         content: A2A agent response content
@@ -171,9 +271,12 @@ def parse_a2a_tool_calls(content: str) -> list[ToolCall] | None:
     if not content or not content.strip():
         return None
 
+    # Extract JSON from markdown code blocks if present
+    json_content = _extract_json_from_markdown(content)
+
     try:
         # Try to parse as JSON
-        data = json.loads(content.strip())
+        data = json.loads(json_content)
 
         # Handle single tool call format
         if "tool_call" in data:
@@ -223,7 +326,6 @@ def a2a_to_tau2_assistant_message(content: str) -> AssistantMessage:
     Returns:
         tau2 AssistantMessage with either text content or tool calls
     """
-    # Try to parse tool calls first
     tool_calls = parse_a2a_tool_calls(content)
 
     if tool_calls:
