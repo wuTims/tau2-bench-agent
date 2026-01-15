@@ -78,6 +78,46 @@ def _shutdown_executor():
     _EVALUATION_EXECUTOR.shutdown(wait=False)
 
 
+def _task_raw_difficulty(task: "Task") -> int | None:
+    """Compute structural difficulty from a task's evaluation criteria."""
+    if not task.evaluation_criteria:
+        return None
+    info = task.evaluation_criteria.info()
+    num_communicate = (
+        len(task.evaluation_criteria.communicate_info)
+        if task.evaluation_criteria.communicate_info
+        else 0
+    )
+    return (
+        info["num_agent_actions"]
+        + info["num_nl_assertions"]
+        + info["num_env_assertions"]
+        + num_communicate
+    )
+
+
+def _avg_task_difficulty_raw(tasks: list["Task"]) -> float | None:
+    diffs = [raw for task in tasks if (raw := _task_raw_difficulty(task)) is not None]
+    if not diffs:
+        return None
+    return sum(diffs) / len(diffs)
+
+
+def _avg_task_difficulty_norm(
+    tasks: list["Task"], baseline_min: int | None, baseline_max: int | None
+) -> float | None:
+    diffs = [raw for task in tasks if (raw := _task_raw_difficulty(task)) is not None]
+    if not diffs:
+        return None
+    if baseline_min is None or baseline_max is None:
+        return None
+    if baseline_max == baseline_min:
+        return 0.5
+    return sum((d - baseline_min) / (baseline_max - baseline_min) for d in diffs) / len(
+        diffs
+    )
+
+
 atexit.register(_shutdown_executor)
 
 # Provider prefix to environment variable mapping for auto-resolving API keys.
@@ -782,34 +822,35 @@ class RunTau2Evaluation(BaseTool):
                     span_context=llmobs_span_context,
                 )
 
-            # Compute average task difficulty (normalized 0-1)
-            difficulties = []
-            for task in results.tasks:
-                if task.evaluation_criteria:
-                    info = task.evaluation_criteria.info()
-                    num_communicate = (
-                        len(task.evaluation_criteria.communicate_info)
-                        if task.evaluation_criteria.communicate_info
-                        else 0
-                    )
-                    raw_diff = (
-                        info["num_agent_actions"]
-                        + info["num_nl_assertions"]
-                        + info["num_env_assertions"]
-                        + num_communicate
-                    )
-                    difficulties.append(raw_diff)
+            # Compute average task difficulty normalized against full domain baseline.
+            try:
+                from tau2.run import load_tasks
 
-            if difficulties:
-                min_d, max_d = min(difficulties), max(difficulties)
-                if max_d > min_d:
-                    avg_difficulty = sum(
-                        (d - min_d) / (max_d - min_d) for d in difficulties
-                    ) / len(difficulties)
+                baseline_tasks = load_tasks(task_set_name=domain, task_split_name=None)
+                baseline_diffs = [
+                    raw
+                    for task in baseline_tasks
+                    if (raw := _task_raw_difficulty(task)) is not None
+                ]
+                if baseline_diffs:
+                    baseline_min = min(baseline_diffs)
+                    baseline_max = max(baseline_diffs)
                 else:
-                    avg_difficulty = 0.5
-            else:
-                avg_difficulty = None
+                    baseline_min = None
+                    baseline_max = None
+            except Exception as e:
+                logger.warning(
+                    "Failed to compute difficulty baseline",
+                    domain=domain,
+                    error=str(e),
+                )
+                baseline_min = None
+                baseline_max = None
+
+            avg_difficulty_raw = _avg_task_difficulty_raw(results.tasks)
+            avg_difficulty = _avg_task_difficulty_norm(
+                results.tasks, baseline_min, baseline_max
+            )
 
             result = {
                 "status": "completed",
@@ -827,6 +868,11 @@ class RunTau2Evaluation(BaseTool):
                     "avg_agent_cost": sanitize_float(metrics.avg_agent_cost),
                     "avg_difficulty": (
                         sanitize_float(avg_difficulty) if avg_difficulty is not None else None
+                    ),
+                    "avg_difficulty_raw": (
+                        sanitize_float(avg_difficulty_raw)
+                        if avg_difficulty_raw is not None
+                        else None
                     ),
                 },
                 "tasks": [
