@@ -197,6 +197,15 @@ env-cli:
 install:
 	uv sync
 
+## Run both linting and formatting (repo-wide, from upstream)
+.PHONY: check-all
+check-all: lint-all format-all
+
+## Install pre-commit hooks
+.PHONY: setup-hooks
+setup-hooks:
+	uv run pre-commit install
+
 ## Display online help for commonly used targets in this Makefile
 .PHONY: help
 help:
