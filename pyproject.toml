@@ -83,6 +83,7 @@ gym = [
 ]
 dev = [
     "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.9.1",
     "pre-commit>=4.0.0",
 ]
@@ -111,7 +112,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "full_duplex_integration: marks tests as full-duplex integration tests requiring OpenAI Realtime API and TTS (deselect with '-m \"not full_duplex_integration\"')",
-    "a2a_mock: A2A tests with mocked dependencies (run by default)",
+    "a2a_mock: marks tests that use mocked A2A transports (no real network calls)",
+    "unit: marks pure unit tests with no external dependencies",
     "a2a_e2e: A2A end-to-end tests requiring real services (opt-in only)",
     "smoke: Smoke tests for full tau2_agent <-> agent integration (opt-in, requires API keys)",
     "datadog_e2e: Datadog E2E observability tests validating A2A -> Store -> Metrics flow (opt-in)",

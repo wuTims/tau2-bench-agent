@@ -102,12 +102,6 @@ def add_run_args(parser):
         help="Timeout in seconds for A2A agent responses. Default is 300.",
     )
     parser.add_argument(
-        "--a2a-debug",
-        action="store_true",
-        default=False,
-        help="Enable verbose debug logging for A2A protocol (message payloads, context lifecycle, tool descriptions). Sets A2A modules to TRACE level.",
-    )
-    parser.add_argument(
         "--user",
         type=str,
         choices=get_options().users,
@@ -648,6 +642,17 @@ def main():
 
         set_llm_log_mode(args.llm_log_mode)
 
+        # Build A2A config if applicable
+        a2a_agent_args = None
+        if args.agent == "a2a_agent":
+            if not args.agent_a2a_endpoint:
+                parser.error("--agent-a2a-endpoint is required when using a2a_agent")
+            a2a_agent_args = {"endpoint": args.agent_a2a_endpoint}
+            if args.agent_a2a_auth_token:
+                a2a_agent_args["auth_token"] = args.agent_a2a_auth_token
+            if args.agent_a2a_timeout:
+                a2a_agent_args["timeout"] = args.agent_a2a_timeout
+
         # Shared config kwargs
         shared_kwargs = dict(
             domain=args.domain,
@@ -692,6 +697,7 @@ def main():
                 user=args.user,
                 max_steps=args.max_steps,
                 enforce_communication_protocol=args.enforce_communication_protocol,
+                a2a_agent_args=a2a_agent_args,
             )
 
         return run_domain(config)

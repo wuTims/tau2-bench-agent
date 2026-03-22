@@ -1,40 +1,37 @@
 """A2A Agent implementation for tau2-bench."""
 
-import os
-from typing import Any
+from typing import List, Optional
 
 import httpx
 from loguru import logger
 
 from tau2.a2a.client import A2AClient
-from tau2.a2a.metrics import AggregatedMetrics, ProtocolMetrics
 from tau2.a2a.models import A2AAgentState, A2AConfig
 from tau2.a2a.translation import (
     a2a_to_tau2_assistant_message,
+    format_tools_as_text,
     tau2_to_a2a_message_content,
 )
-from tau2.agent.base import LocalAgent, ValidAgentInputMessage
-from tau2.data_model.message import AssistantMessage, Message
+from tau2.agent.base_agent import HalfDuplexAgent, ValidAgentInputMessage
+from tau2.data_model.message import AssistantMessage, Message, ToolMessage
 from tau2.environment.tool import Tool
 
 
-class A2AAgent(LocalAgent):
+class A2AAgent(HalfDuplexAgent):
     """
     Agent that communicates with remote A2A-compliant agents.
 
-    Implements the BaseAgent interface by:
-    - Translating tau2 messages to A2A protocol format
-    - Sending messages via HTTP to remote A2A agent
-    - Parsing A2A responses back to tau2 AssistantMessage format
-    - Managing session context across multi-turn conversations
+    Implements the HalfDuplexAgent interface by translating tau2 messages
+    to A2A protocol format, sending them via HTTP, and parsing responses
+    back to tau2 AssistantMessage format.
     """
 
     def __init__(
         self,
         config: A2AConfig,
-        tools: list[Tool],
+        tools: List[Tool],
         domain_policy: str,
-        http_client: httpx.AsyncClient | None = None,
+        http_client: Optional[httpx.AsyncClient] = None,
     ):
         """
         Initialize A2A agent.
@@ -50,102 +47,16 @@ class A2AAgent(LocalAgent):
         self.config = config
         self.client = A2AClient(config=config, http_client=http_client)
 
+        self._valid_tool_names = {tool.name for tool in tools}
+
         logger.info(
-            "Initialized A2AAgent",
-            endpoint=config.endpoint,
-            timeout=config.timeout,
-            num_tools=len(tools),
+            f"Initialized A2AAgent (endpoint={config.endpoint}, "
+            f"timeout={config.timeout}, num_tools={len(tools)})"
         )
-
-    def _is_llmobs_enabled(self) -> bool:
-        """Check if LLMObs is enabled via environment variables."""
-        return (
-            os.getenv("DD_TRACE_ENABLED", "false").lower() == "true"
-            and os.getenv("DD_LLMOBS_ENABLED", "false").lower() == "true"
-        )
-
-    async def _send_with_llmobs(
-        self,
-        a2a_content: str,
-        context_id: str | None,
-        state: A2AAgentState,
-    ) -> tuple[str, str | None]:
-        """Send message to A2A agent, wrapped in LLMObs span if enabled.
-
-        This creates an 'agent' span in Datadog LLMObs that shows the
-        input message sent to the A2A agent and the response received.
-        This allows correlating A2A agent responses with user simulator
-        LLM calls in the same trace view.
-
-        Args:
-            a2a_content: The message content to send (already translated to A2A format)
-            context_id: Optional context ID for multi-turn conversations
-            state: Current agent state for accessing request count metadata
-
-        Returns:
-            Tuple of (response_content, new_context_id) from the A2A agent
-        """
-        if not self._is_llmobs_enabled():
-            # LLMObs not enabled, just send directly
-            return await self.client.send_message(
-                message_content=a2a_content,
-                context_id=context_id,
-            )
-
-        try:
-            from ddtrace import tracer
-            from ddtrace.llmobs import LLMObs
-
-            # Get evaluation context from parent span for correlation
-            parent_span = tracer.current_span()
-            eval_id = parent_span.get_tag("evaluation_id") if parent_span else None
-            domain = parent_span.get_tag("domain") if parent_span else None
-
-            with LLMObs.agent(name="a2a_agent") as span:
-                # Annotate with input and metadata for trace correlation
-                LLMObs.annotate(
-                    span=span,
-                    input_data=a2a_content,
-                    metadata={
-                        "tau2.evaluation_id": eval_id,
-                        "tau2.domain": domain,
-                        "tau2.perspective": "agent_under_test",
-                        "tau2.turn": state.request_count + 1,
-                        "tau2.context_id": context_id or "new_conversation",
-                        "tau2.note": "This is the agent's response. Correlates with user_simulator completion spans where roles appear inverted (user=agent input, assistant=customer output).",
-                    },
-                )
-
-                # Send the actual request
-                response_content, new_context_id = await self.client.send_message(
-                    message_content=a2a_content,
-                    context_id=context_id,
-                )
-
-                # Annotate with output (what the agent responded)
-                LLMObs.annotate(
-                    span=span,
-                    output_data=response_content,
-                )
-
-                return response_content, new_context_id
-
-        except ImportError:
-            logger.debug("LLMObs not available, sending without span")
-            return await self.client.send_message(
-                message_content=a2a_content,
-                context_id=context_id,
-            )
-        except Exception as e:
-            logger.warning(f"LLMObs span failed, sending without span: {e}")
-            return await self.client.send_message(
-                message_content=a2a_content,
-                context_id=context_id,
-            )
 
     def get_init_state(
         self,
-        message_history: list[Message] | None = None,
+        message_history: Optional[list[Message]] = None,
     ) -> A2AAgentState:
         """
         Get the initial state of the agent.
@@ -154,12 +65,11 @@ class A2AAgent(LocalAgent):
             message_history: Optional message history to initialize with
 
         Returns:
-            Fresh A2AAgentState with no context_id (will be set on first response)
+            Fresh A2AAgentState with no context_id
         """
         logger.trace(
-            "Initializing A2A agent state",
-            context_id=None,
-            message_history_length=len(message_history or []),
+            f"Initializing A2A agent state "
+            f"(history_length={len(message_history or [])})"
         )
         return A2AAgentState(
             context_id=None,
@@ -173,24 +83,12 @@ class A2AAgent(LocalAgent):
         message: ValidAgentInputMessage,
         state: A2AAgentState,
     ) -> tuple[AssistantMessage, A2AAgentState]:
-        """
-        Produce the next assistant message by sending the provided input to the remote A2A agent and update the agent state.
-        
-        Parameters:
-            message: The incoming user or tool-result message to deliver to the remote agent.
-            state: The current A2AAgentState (context, conversation history, request count).
-        
-        Returns:
-            A tuple of (AssistantMessage, A2AAgentState) where the AssistantMessage is the agent's reply and the A2AAgentState is the updated state with a possibly new context_id, extended conversation history, and incremented request_count.
-        """
+        """Respond to a user or tool message via the remote A2A agent."""
         import asyncio
 
-        # Async/sync bridge: Run async HTTP operations in synchronous context
         async def _async_generate():
-            # Determine what context to include based on message type and conversation state
             tools_for_translation = self.tools if message.role == "user" else None
             is_first_message = state.request_count == 0
-
             policy_for_translation = self.domain_policy if is_first_message else None
 
             a2a_content = tau2_to_a2a_message_content(
@@ -200,61 +98,67 @@ class A2AAgent(LocalAgent):
                 is_first_message=is_first_message,
             )
 
+            # On tool errors, include available tools to aid self-correction
+            if isinstance(message, ToolMessage) and message.error:
+                tool_text = format_tools_as_text(self.tools)
+                if tool_text:
+                    a2a_content += f"\n\n{tool_text}"
+                    a2a_content += (
+                        "\nTo use a tool, respond with JSON: "
+                        '{"tool_call": {"name": "tool_name", "arguments": {"param1": "value"}}}'
+                    )
+
             logger.debug(
-                "Sending message to A2A agent",
-                role=message.role,
-                content_length=len(a2a_content),
-                context_id=state.context_id,
+                f"Sending message to A2A agent (role={message.role}, "
+                f"length={len(a2a_content)}, context_id={state.context_id})"
             )
 
-            # Debug: Log context_id lifecycle - before request
             if state.context_id is None:
                 logger.trace(
-                    "A2A context_id lifecycle: First message, no context yet",
-                    request_count=state.request_count,
+                    f"A2A context lifecycle: first message "
+                    f"(request_count={state.request_count})"
                 )
             else:
                 logger.trace(
-                    "A2A context_id lifecycle: Reusing existing context",
-                    context_id=state.context_id,
-                    request_count=state.request_count,
+                    f"A2A context lifecycle: reusing context "
+                    f"(context_id={state.context_id}, "
+                    f"request_count={state.request_count})"
                 )
 
-            # Send message to A2A agent, wrapped in LLMObs span if enabled
-            response_content, new_context_id = await self._send_with_llmobs(
-                a2a_content=a2a_content,
+            # Send message to A2A agent
+            response_content, new_context_id = await self.client.send_message(
+                message_content=a2a_content,
                 context_id=state.context_id,
-                state=state,
             )
 
             logger.debug(
-                "Received response from A2A agent",
-                response_length=len(response_content),
-                new_context_id=new_context_id,
+                f"Received response from A2A agent "
+                f"(length={len(response_content)}, "
+                f"context_id={new_context_id})"
             )
 
-            # Debug: Log context_id lifecycle - after response
             if state.context_id is None and new_context_id is not None:
                 logger.trace(
-                    "A2A context_id lifecycle: New context created by agent",
-                    new_context_id=new_context_id,
-                    request_count=state.request_count,
-                )
-            elif state.context_id == new_context_id:
-                logger.trace(
-                    "A2A context_id lifecycle: Context persisted across turns",
-                    context_id=new_context_id,
-                    request_count=state.request_count,
+                    f"A2A context lifecycle: new context created "
+                    f"(context_id={new_context_id})"
                 )
             elif state.context_id != new_context_id:
                 logger.warning(
-                    "A2A context_id lifecycle: Context changed unexpectedly",
-                    old_context_id=state.context_id,
-                    new_context_id=new_context_id,
-                    request_count=state.request_count,
+                    f"A2A context lifecycle: context changed unexpectedly "
+                    f"(old={state.context_id}, new={new_context_id})"
                 )
 
             assistant_msg = a2a_to_tau2_assistant_message(response_content)
+
+            # Log invalid tool calls for diagnostics
+            if assistant_msg.is_tool_call():
+                invalid = [
+                    tc.name
+                    for tc in assistant_msg.tool_calls
+                    if tc.name not in self._valid_tool_names
+                ]
+                if invalid:
+                    logger.debug(f"A2A agent produced invalid tool call(s): {invalid}")
 
             new_conversation_history = state.conversation_history + [
                 message,
@@ -276,114 +180,46 @@ class A2AAgent(LocalAgent):
         # Using asyncio.run() creates a fresh event loop for this thread.
         #
         # IMPORTANT: Do NOT use nested ThreadPoolExecutor here - it causes deadlock
-        # when multiple concurrent evaluations run, as each nested executor blocks
-        # its parent worker thread waiting on future.result().
-        # See: specs/007-datadog-project/resolve-tau2agent-concurrency.md
+        # when multiple concurrent evaluations run.
         return asyncio.run(_async_generate())
 
     def stop(
         self,
-        message: ValidAgentInputMessage | None = None,
-        state: A2AAgentState | None = None,
+        message: Optional[ValidAgentInputMessage] = None,
+        state: Optional[A2AAgentState] = None,
     ) -> None:
         """
-        Stop the agent and release its resources.
-        
-        Closes the agent's internal HTTP client by running its asynchronous close routine; the implementation will create or reuse an event loop as needed to perform the shutdown.
-        
-        Parameters:
-            message (ValidAgentInputMessage | None): Ignored; present for interface compatibility.
-            state (A2AAgentState | None): Ignored; present for interface compatibility.
+        Stop the agent and release resources.
+
+        Args:
+            message: The last message to the agent.
+            state: The agent state.
         """
         import asyncio
 
         async def _async_close():
             await self.client.close()
 
-        # Run async close synchronously - same pattern as generate_next_message()
-        # See: specs/007-datadog-project/resolve-tau2agent-concurrency.md
         asyncio.run(_async_close())
-
         logger.debug("A2AAgent stopped and resources cleaned up")
 
-    def get_protocol_metrics(self) -> list[ProtocolMetrics]:
-        """
-        Get all collected protocol metrics from the A2A client.
 
-        Returns:
-            List of ProtocolMetrics for all A2A requests made by this agent
-        """
-        return self.client.get_metrics()
+def create_a2a_agent(tools, domain_policy, **kwargs):
+    """Factory function for A2AAgent.
 
-    def get_aggregated_metrics(self) -> AggregatedMetrics:
-        """
-        Get aggregated protocol metrics summary.
-
-        Returns:
-            AggregatedMetrics with computed summary statistics
-        """
-        metrics = self.get_protocol_metrics()
-        return AggregatedMetrics.from_protocol_metrics(metrics)
-
-    def export_metrics_json(self, task_id: str | None = None) -> dict[str, Any]:
-        """
-        Export protocol metrics in JSON format for tau2-bench results.
-
-        This format follows the specification in data-model.md and can be
-        integrated into tau2-bench's results export.
-
-        Args:
-            task_id: Optional task identifier for context
-
-        Returns:
-            Dictionary with protocol metrics and summary in tau2-bench format
-        """
-        protocol_metrics = self.get_protocol_metrics()
-        aggregated_metrics = self.get_aggregated_metrics()
-
-        return {
-            "task_id": task_id,
-            "agent_type": "a2a_agent",
-            "protocol_metrics": [m.to_dict() for m in protocol_metrics],
-            "summary": aggregated_metrics.model_dump(),
-        }
-
-    def clear_metrics(self) -> None:
-        """Clear all collected protocol metrics."""
-        self.client.clear_metrics()
-
-    @classmethod
-    def from_cli_args(
-        cls,
-        llm: str,
-        llm_args: dict,
-        tools: list[Tool],
-        domain_policy: str,
-    ) -> "A2AAgent":
-        """
-        Create A2AAgent from CLI arguments.
-
-        This follows tau2-bench's agent construction pattern where:
-        - llm parameter contains the A2A endpoint
-        - llm_args contains auth_token and timeout
-
-        Args:
-            llm: A2A agent endpoint URL
-            llm_args: Dict with optional 'auth_token' and 'timeout' keys
-            tools: List of available tools
-            domain_policy: Domain policy text
-
-        Returns:
-            Configured A2AAgent instance
-        """
-        config = A2AConfig(
-            endpoint=llm,
-            auth_token=llm_args.get("auth_token"),
-            timeout=llm_args.get("timeout", 300),
-        )
-
-        return cls(
-            config=config,
-            tools=tools,
-            domain_policy=domain_policy,
-        )
+    Args:
+        tools: Environment tools the agent can call.
+        domain_policy: Policy text the agent must follow.
+        **kwargs: Additional arguments. Supports:
+            - a2a_agent_args (dict): A2A configuration with keys:
+                - endpoint (str, required): A2A agent endpoint URL
+                - auth_token (str, optional): Bearer token for authentication
+                - timeout (int, optional): Response timeout in seconds (default 300)
+    """
+    a2a_agent_args = kwargs.get("a2a_agent_args") or {}
+    config = A2AConfig(
+        endpoint=a2a_agent_args["endpoint"],
+        auth_token=a2a_agent_args.get("auth_token"),
+        timeout=a2a_agent_args.get("timeout", 300),
+    )
+    return A2AAgent(config=config, tools=tools, domain_policy=domain_policy)
