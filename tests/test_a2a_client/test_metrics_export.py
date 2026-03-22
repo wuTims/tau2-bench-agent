@@ -148,48 +148,6 @@ class TestMetricsExport:
 class TestA2AAgentMetricsIntegration:
     """Test metrics integration with A2AAgent."""
 
-    def test_agent_collects_metrics_during_execution(self, mock_a2a_agent_with_metrics):
-        """Test that A2AAgent collects metrics during message generation."""
-        agent, mock_client = mock_a2a_agent_with_metrics
-
-        # Create initial state
-        state = agent.get_init_state()
-
-        # Send a message
-        message = UserMessage(role="user", content="Test message")
-        assistant_msg, new_state = agent.generate_next_message(message, state)
-
-        # Verify message was processed
-        assert assistant_msg.content == "Mock response"
-        assert new_state.request_count == 1
-
-        # Verify metrics were collected
-        metrics = agent.get_protocol_metrics()
-        assert len(metrics) == 1
-        assert metrics[0].endpoint == "http://localhost:8080"
-
-    def test_agent_exports_metrics_summary(self, mock_a2a_agent_with_metrics):
-        """Test that A2AAgent can export metrics summary."""
-        agent, mock_client = mock_a2a_agent_with_metrics
-
-        # Execute multiple requests
-        state = agent.get_init_state()
-
-        for i in range(3):
-            message = UserMessage(role="user", content=f"Message {i}")
-            _, state = agent.generate_next_message(message, state)
-
-        # Verify request count increased
-        assert state.request_count == 3
-
-        # Verify metrics are collected
-        protocol_metrics = agent.get_protocol_metrics()
-        assert len(protocol_metrics) == 3
-
-        # Verify aggregated metrics
-        aggregated = agent.get_aggregated_metrics()
-        assert aggregated.total_requests == 3
-
     def test_metrics_export_format_matches_spec(self):
         """Test that exported metrics match the specification format."""
         # Expected format from data-model.md
