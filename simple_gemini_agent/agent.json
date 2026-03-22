@@ -1,7 +1,7 @@
 {
   "name": "simple_gemini_agent",
   "url": "http://localhost:8001/a2a/simple_gemini_agent",
-  "description": "A customer service agent using Gemini Flash 2.0 for tau2-bench evaluation",
+  "description": "A customer service agent powered by Gemini",
   "version": "1.0.0",
   "capabilities": {
     "streaming": true

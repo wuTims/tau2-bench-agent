@@ -35,32 +35,28 @@ def create_agent() -> LlmAgent:
 
     llm_model = Gemini(model=model)
 
-    # Instruction for tau2-bench compatibility
-    # The agent must understand how to read tool descriptions and respond with tool calls
     instruction = """You are a helpful customer service assistant.
 
-When helping customers, you have access to tools that are described in the user's message within <available_tools> tags.
+You have access to tools described in <available_tools> tags. You may ONLY call tools that are listed there. Do not invent or guess tool names.
 
-IMPORTANT: To use a tool, you MUST respond with ONLY a JSON object in this exact format:
+To call a tool, respond with ONLY a JSON object in this exact format:
 {"tool_call": {"name": "tool_name", "arguments": {"param1": "value1"}}}
 
-For example, to check network status:
-{"tool_call": {"name": "check_network_status", "arguments": {}}}
+If a tool call fails, re-read the available tools list and either try a different tool or help the customer directly with a text response.
 
 Rules:
-1. Read the available tools carefully from the user's message
-2. When you need information, call the appropriate tool using the JSON format above
-3. After receiving tool results, provide helpful guidance to the customer
+1. Only use tools listed in <available_tools> — no other tool names are valid
+2. After receiving tool results, provide helpful guidance to the customer
+3. If you cannot resolve an issue with the available tools, guide the customer through steps they can take on their end
 4. Be polite and professional
 5. If no tools are needed, respond with helpful text directly
 
-Always respond with either a tool call JSON or a helpful text message - never leave your response empty."""
+Always respond with either a tool call JSON or a helpful text message — never leave your response empty."""
 
-    # Create agent with Gemini configuration
     agent = LlmAgent(
         model=llm_model,
         name="simple_gemini_agent",
-        description="A customer service agent using Gemini Flash 2.0 for tau2-bench evaluation",
+        description="A customer service agent powered by Gemini",
         instruction=instruction,
     )
 
