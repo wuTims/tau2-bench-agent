@@ -163,7 +163,7 @@ Google offers two ways to access Gemini models:
 - Volume warrants negotiated pricing
 
 ### Consequences
-- Store `GOOGLE_API_KEY` in Secret Manager
+- Store API key in Secret Manager, expose as `GEMINI_API_KEY` environment variable (required by LiteLLM)
 - Use `gemini/gemini-2.0-flash` model string (litellm format)
 - Document migration path to Vertex AI
 

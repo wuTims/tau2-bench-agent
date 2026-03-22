@@ -4,16 +4,6 @@
 
 Deploy tau2_agent as a hosted evaluation service on Google Cloud Platform, allowing external clients to run tau2-bench evaluations without managing infrastructure.
 
-## Clarifications
-
-### Session 2025-12-25
-
-- Q: When the client's LLM provider returns a rate limit error, timeout, or transient failure mid-evaluation, what should happen? → A: Fail the entire evaluation and return an error response (no partial results)
-- Q: Should this GCP deployment include observability instrumentation (metrics, tracing)? → A: Defer to 007-datadog-project; this spec focuses on deployment infrastructure only
-- Q: How should API versioning be handled for future breaking changes? → A: No versioning initially; add `/v2/` prefix only when breaking changes are needed
-- Q: What availability level is expected for the hosted service? → A: Best effort, no formal SLA (cold starts and occasional failures acceptable)
-- Q: How should "Evaluation results returned correctly" be validated? → A: Manual verification - run one evaluation and visually inspect the response structure
-
 ## Problem Statement
 
 Currently, tau2_agent runs locally with LLM credentials stored in environment variables. For a public-hosted evaluation service:
@@ -82,7 +72,7 @@ Headers:
 The tau2_agent orchestrator uses a server-configured default model:
 - **Default**: `gemini-2.0-flash` via Gemini Developer API
 - **Configured via**: Server environment variable `TAU2_AGENT_MODEL`
-- **API Key**: Server-managed `GOOGLE_API_KEY` environment variable
+- **API Key**: Server-managed `GEMINI_API_KEY` environment variable (required by LiteLLM)
 
 ### FR-3: Request Validation
 
@@ -172,14 +162,7 @@ For full domain evaluations, a future async pattern could:
 
 This is **out of scope** for initial deployment but documented as future work.
 
-### NFR-4: Availability
-
-- **SLA**: Best effort, no formal uptime guarantees
-- **Cold starts**: Acceptable (scale-to-zero prioritizes cost over latency)
-- **Failure handling**: Clients should retry on transient errors
-- **Rationale**: Service provides benchmarking convenience, not production-critical infrastructure
-
-### NFR-5: Security
+### NFR-4: Security
 
 - HTTPS only (Cloud Run default)
 - API keys never logged
@@ -250,7 +233,7 @@ tau2 already supports `llm_args_user={"api_key": ...}` via `RunConfig`. We just 
 ```bash
 # Server-side configuration
 TAU2_AGENT_MODEL=gemini-2.0-flash          # Model for tau2_agent orchestrator
-GOOGLE_API_KEY=AIza...                      # API key for server's Gemini usage
+GEMINI_API_KEY=AIza...                      # API key for server's Gemini usage (required by LiteLLM)
 SERVICE_API_KEYS=key1,key2                  # Optional: restrict service access
 LOG_LEVEL=INFO
 PORT=8001
@@ -265,14 +248,11 @@ Use existing `tau2_agent/docker_setup/` with modifications:
 ENV PORT=8001
 ENV TAU2_AGENT_MODEL=gemini-2.0-flash
 
-# Custom entrypoint enables BYOK middleware (see research.md DEC-006)
-# ADK's adk api_server CLI doesn't expose middleware hooks
-CMD ["python", "-m", "tau2_agent.server"]
+# Cloud Run uses PORT env var
+CMD ["adk", "api_server", "--a2a", ".", "--port", "${PORT}", "--host", "0.0.0.0"]
 ```
 
 ## API Contract
-
-**Versioning**: No version prefix initially (`/a2a/tau2_agent`). Future breaking changes will use `/v2/` prefix while maintaining `/a2a/` as v1 for backward compatibility.
 
 ### Request
 
@@ -325,35 +305,12 @@ gcloud run deploy tau2-agent \
   --allow-unauthenticated \
   --port 8001 \
   --set-env-vars "TAU2_AGENT_MODEL=gemini-2.0-flash" \
-  --set-secrets "GOOGLE_API_KEY=google-api-key:latest"
+  --set-secrets "GEMINI_API_KEY=google-api-key:latest"
 ```
 
 ### Secret Management
 
 Store `GOOGLE_API_KEY` in Google Secret Manager, reference in Cloud Run deployment.
-
-## Edge Cases & Failure Handling
-
-### LLM Provider Failures
-
-When the client's LLM provider (user simulator) encounters errors mid-evaluation:
-
-| Failure Type | Behavior |
-|--------------|----------|
-| Rate limit (429) | Fail entire evaluation, return error |
-| Timeout | Fail entire evaluation, return error |
-| Authentication error | Fail entire evaluation, return 401 |
-| Transient errors | Fail entire evaluation, return error |
-
-**No partial results are returned.** If any task fails due to LLM provider issues, the entire evaluation fails. Rationale:
-- Client controls execution volume and provider choice
-- Partial results may produce misleading benchmark scores
-- Simpler implementation without checkpoint/resume logic
-
-Error response includes:
-- Tasks completed before failure
-- Failure reason and affected task index
-- Suggestion to reduce `num_tasks` or check provider status
 
 ## Out of Scope
 
@@ -366,7 +323,6 @@ Error response includes:
   - Retail (114 tasks) and Telecom (2,285 tasks) require local execution
   - Hosted service supports sampled evaluations (max 30 tasks)
 - **Async evaluation pattern** (future enhancement for full domains)
-- **Observability instrumentation** (metrics, tracing, structured logging) - deferred to 007-datadog-project
 
 ## Success Criteria
 
@@ -376,4 +332,3 @@ Error response includes:
 4. [ ] Missing headers return appropriate 400 errors
 5. [ ] Invalid API keys return 401 errors
 6. [ ] Evaluation results returned correctly via A2A protocol
-   - Validation: Manual verification - run one mock domain evaluation and inspect response contains valid JSON-RPC structure with evaluation metrics

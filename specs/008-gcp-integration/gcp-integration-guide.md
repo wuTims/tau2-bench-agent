@@ -110,12 +110,11 @@ gcloud config configurations describe tau2-agent
 
 ### Application Default Credentials (ADC) - Recommended
 
-ADC provides automatic credential discovery. Priority order:
+ADC provides automatic credential discovery. Priority order (per [official documentation](https://docs.cloud.google.com/docs/authentication/application-default-credentials)):
 
-1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable (service account key file)
-2. User credentials from `gcloud auth application-default login`
-3. Attached service account (on GCP compute resources)
-4. Compute Engine/Cloud Run default service account
+1. `GOOGLE_APPLICATION_CREDENTIALS` environment variable (path to service account key JSON)
+2. User credentials from `gcloud auth application-default login` (stored in `~/.config/gcloud/application_default_credentials.json`)
+3. Attached service account via metadata server (on Compute Engine, Cloud Run, GKE, etc.)
 
 **Local Development:**
 
@@ -254,7 +253,7 @@ gcloud run deploy tau2-agent \
     --min-instances 0 \
     --max-instances 10 \
     --set-env-vars "TAU2_AGENT_MODEL=gemini-2.0-flash,LOG_LEVEL=INFO" \
-    --set-secrets "GOOGLE_API_KEY=google-api-key:latest"
+    --set-secrets "GEMINI_API_KEY=google-api-key:latest"
 ```
 
 ### Image-Based Deployment (Recommended for Production)
@@ -278,7 +277,7 @@ gcloud run deploy tau2-agent \
     --max-instances 10 \
     --service-account tau2-agent-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com \
     --set-env-vars "TAU2_AGENT_MODEL=gemini-2.0-flash,LOG_LEVEL=INFO" \
-    --set-secrets "GOOGLE_API_KEY=google-api-key:latest"
+    --set-secrets "GEMINI_API_KEY=google-api-key:latest"
 ```
 
 ### Key Deployment Flags
@@ -335,7 +334,7 @@ spec:
               value: "INFO"
             - name: PORT
               value: "8001"
-            - name: GOOGLE_API_KEY
+            - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
                   key: latest
@@ -391,7 +390,7 @@ Document required environment variables:
 ```bash
 # Server-side configuration
 TAU2_AGENT_MODEL=gemini-2.0-flash
-GOOGLE_API_KEY=                    # Set via Secret Manager
+GEMINI_API_KEY=                    # Set via Secret Manager (required by LiteLLM)
 LOG_LEVEL=INFO
 PORT=8001
 
@@ -418,6 +417,11 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 export VERTEXAI_PROJECT="your-project-id"
 export VERTEXAI_LOCATION="us-central1"
 ```
+
+> **Note on API Key Naming**: LiteLLM specifically reads from `GEMINI_API_KEY` (per [LiteLLM docs](https://docs.litellm.ai/docs/providers/gemini)), while Cloud Run deployment examples use `GOOGLE_API_KEY` as the Secret Manager secret name. Ensure your deployment maps the secret to the correct environment variable name:
+> ```bash
+> --set-secrets "GEMINI_API_KEY=google-api-key:latest"
+> ```
 
 ### Model String Formats
 
@@ -468,7 +472,7 @@ response = completion(
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TAU2_AGENT_MODEL` | No | `gemini-2.0-flash` | Model for tau2_agent orchestrator |
-| `GOOGLE_API_KEY` | Yes | - | Gemini API key (via Secret Manager) |
+| `GEMINI_API_KEY` | Yes | - | Gemini API key (via Secret Manager) - required by LiteLLM |
 | `PORT` | No | 8001 | Server port (Cloud Run sets this) |
 | `LOG_LEVEL` | No | INFO | Logging verbosity |
 | `SERVICE_API_KEYS` | No | - | Comma-separated service keys for access control |
@@ -529,7 +533,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --min-instances 0 \
     --max-instances 10 \
     --set-env-vars "TAU2_AGENT_MODEL=gemini-2.0-flash,LOG_LEVEL=INFO" \
-    --set-secrets "GOOGLE_API_KEY=google-api-key:latest" \
+    --set-secrets "GEMINI_API_KEY=google-api-key:latest" \
     --project "${PROJECT_ID}"
 
 # Get service URL
@@ -616,9 +620,21 @@ curl -X POST "${SERVICE_URL}/a2a/tau2_agent" \
 |-------|-------|----------|
 | Cold start > 30s | Large container image | Reduce dependencies, use slim base image |
 | Secret access denied | Missing IAM binding | Grant `secretmanager.secretAccessor` role |
-| 60-min timeout reached | Evaluation too long | Reduce `num_tasks` to max 30 |
+| 60-min timeout reached | Evaluation too long | Reduce `num_tasks` to max 30, `num_trials` to max 3 |
 | LiteLLM auth error | Wrong model prefix | Use `gemini/` for Developer API, `vertex_ai/` for Vertex |
+| LiteLLM auth error | Wrong env var name | Use `GEMINI_API_KEY` not `GOOGLE_API_KEY` for LiteLLM |
 | Port binding error | Wrong PORT env | Ensure `PORT=8001` matches Dockerfile |
+
+### Task Execution Limits
+
+Cloud Run's 60-minute request timeout constrains which evaluations can run synchronously:
+
+| Parameter | Limit | Rationale |
+|-----------|-------|-----------|
+| `num_tasks` | Max 30 | ~30-40 min execution with safety margin |
+| `num_trials` | Max 3 | Multiplies execution time |
+
+Requests exceeding these limits should return 400 Bad Request. For full domain evaluations (Retail: 114 tasks, Telecom: 2,285 tasks), run locally or implement async evaluation pattern.
 
 ### Debugging Commands
 
